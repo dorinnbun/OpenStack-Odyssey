@@ -15,6 +15,7 @@ The content targets **OpenStack 2026.1 "Gazpacho"** (a SLURP release). Sources: 
 | **Terminal labs** (5 labs) | A stateful `openstack` CLI simulator in the browser. It produces real-looking tables and real error messages, and supports `-f json/value`, `-c`, tab completion and command history. Objectives are checked automatically. |
 | **Architecture Forge** | A sizing calculator with presets (enterprise, edge, AI/GPU, telco). It generates a live physical diagram and a draft Markdown proposal you can download. |
 | **Cheat Sheet** | Over 180 commands in 12 domains, plus symptom → cause → first check, default ports, resource states, key config options and formulas. You can search it, copy any command and print it to PDF. |
+| **Beyond the Map** | 63 trusted sources for 11 topics the voyage doesn't cover in depth yet: Kubernetes on OpenStack, backup/DR, VMware migration, cost/TCO/chargeback, AI/GPU, automation, performance testing, multi-region and edge, IPv6/DNS, Swift/Ironic, and certification. Each link is labelled Official, Foundation, Upstream, Community or Vendor, and can be filtered by role. Level pages link to the related topics. |
 | **Codex** | A service catalogue with links to the 2026.1 docs, a symptom → log map, a glossary and the full source list. |
 | **Hero profile & paths** | XP, 8 ranks, relics, honours, learning paths per role, a free-roam mode for pros, and progress export/import. |
 
@@ -91,6 +92,7 @@ wrangler.jsonc          Cloudflare Workers static-assets config
 
 - **Add a lesson**: add an object to a level's `lessons` array in `public/js/data/levels-*.js`. Use the `term()`, `note()`, `lens()` and `fig()` helpers from `helpers.js`.
 - **Add an Oracle trial**: add a node graph to `scenarios.js`. Each choice needs either `go` (correct, next node) or `wrong` (feedback). The final node has `end: true`.
+- **Add a Beyond-the-Map source**: add a `[title, url, kind]` entry to `public/js/data/library.js`. `npm run check` validates kinds, roles, levels and HTTPS.
 - **Add a terminal command**: add a handler to `P.cmds` in `terminal.js`. It appears in tab completion automatically.
 - Run `npm run check` before committing.
 

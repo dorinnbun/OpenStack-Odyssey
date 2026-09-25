@@ -37,6 +37,7 @@
       <a href="#/forge" data-route="forge">Forge</a>
       <a href="#/cheatsheet" data-route="cheatsheet">Cheat Sheet</a>
       <a href="#/codex" data-route="codex">Codex</a>
+      <a href="#/beyond" data-route="beyond">Beyond</a>
       <a href="#/profile" data-route="profile">Hero</a>
     </nav>
     <div class="xpbox" data-xpbox title="Your experience">
@@ -46,6 +47,14 @@
     </div>
     <button class="theme-btn" data-theme-toggle aria-label="Toggle day/night theme">ΝΥΞ</button>
   </header>
+
+  <!-- Shared SVG paint servers: kept out of display:none so every coin can reference them. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <radialGradient id="coin-bronze" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#f1cf7a"/><stop offset=".55" stop-color="#c1892e"/><stop offset="1" stop-color="#7a5218"/></radialGradient>
+      <radialGradient id="coin-worn" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#d9ccb2"/><stop offset=".6" stop-color="#a8997d"/><stop offset="1" stop-color="#6f6350"/></radialGradient>
+    </defs>
+  </svg>
 
   <main id="app" tabindex="-1"></main>
 

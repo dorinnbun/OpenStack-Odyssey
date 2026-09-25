@@ -257,7 +257,7 @@ export const PORTS = [
   ['Horizon', '80/443', 'Dashboard'], ['MariaDB/Galera', '3306 · 4567 · 4568 · 4444', 'SQL · replication · IST · SST'],
   ['RabbitMQ', '5672 · 15672 · 25672 · 4369', 'AMQP · mgmt · inter-node · epmd'], ['Memcached', '11211', 'Cache'],
   ['OVN NB / SB', '6641 / 6642', 'OVSDB (6643/6644 RAFT)'], ['Geneve', 'UDP 6081', 'Overlay tunnels'], ['VXLAN', 'UDP 4789', 'Overlay (ML2/OVS)'],
-  ['Octavia amphora', '9443 · UDP 5555', 'Agent API · heartbeats'], ['libvirt migration', '16509 (TLS 16514) · 49152-49261', 'Live migration'],
+  ['Octavia amphora', '9443 · UDP 5555', 'Agent API · heartbeats'], ['libvirt migration', '16509 (TLS 16514) · 49152-49215', 'Live migration'],
   ['Ceph MON', '3300 · 6789', 'msgr2 · msgr1'], ['Ceph OSD/MGR', '6800-7300', 'Daemons'], ['Prometheus', '9090', 'Metrics'],
 ];
 

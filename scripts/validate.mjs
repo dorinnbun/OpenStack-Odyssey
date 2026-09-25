@@ -4,6 +4,8 @@ import { LEVELS_2 } from '../public/js/data/levels-2.js';
 import { LEVELS_3 } from '../public/js/data/levels-3.js';
 import { SCENARIOS } from '../public/js/data/scenarios.js';
 import { LABS } from '../public/js/terminal.js';
+import { LIBRARY } from '../public/js/data/library.js';
+import { ROLES } from '../public/js/data/helpers.js';
 
 const LEVELS = [...LEVELS_1, ...LEVELS_2, ...LEVELS_3];
 const errors = [];
@@ -26,5 +28,16 @@ SCENARIOS.forEach((s) => {
   });
   if (!ends) errors.push(`${s.id}: no end node`);
 });
+const KINDS = new Set(['Official', 'Foundation', 'Upstream', 'Community', 'Vendor']);
+const GLYPHS = new Set(['owl', 'amphora', 'column', 'helmet', 'lyre', 'scroll', 'lamp', 'laurel', 'trident']);
+LIBRARY.forEach((t) => {
+  if (!GLYPHS.has(t.glyph)) errors.push(`library ${t.id}: unknown glyph ${t.glyph}`);
+  t.levels.forEach((id) => { if (!ids.has(id)) errors.push(`library ${t.id}: unknown level ${id}`); });
+  t.roles.forEach((r) => { if (!ROLES[r]) errors.push(`library ${t.id}: unknown role ${r}`); });
+  t.links.forEach(([title, url, kind]) => {
+    if (!/^https:\/\//.test(url)) errors.push(`library ${t.id}: non-https link ${url}`);
+    if (!KINDS.has(kind)) errors.push(`library ${t.id}: unknown kind ${kind} for ${title}`);
+  });
+});
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
-console.log(`OK: ${LEVELS.length} levels, ${LEVELS.reduce((t, l) => t + l.lessons.length, 0)} lessons, ${LEVELS.reduce((t, l) => t + l.quiz.length, 0)} questions, ${SCENARIOS.length} oracle trials, ${LABS.length} labs`);
+console.log(`OK: ${LEVELS.length} levels, ${LEVELS.reduce((t, l) => t + l.lessons.length, 0)} lessons, ${LEVELS.reduce((t, l) => t + l.quiz.length, 0)} questions, ${SCENARIOS.length} oracle trials, ${LABS.length} labs, ${LIBRARY.length} library topics / ${LIBRARY.reduce((t, x) => t + x.links.length, 0)} sources`);

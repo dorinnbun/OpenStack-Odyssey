@@ -5,7 +5,8 @@ import { SCENARIOS } from './data/scenarios.js';
 import { SERVICES, LOGMAP, GLOSSARY, SOURCES } from './data/codex.js';
 import { CHEAT, PORTS, STATES, CONFIG, SYMPTOMS } from './data/cheatsheet.js';
 import { esc, ROLES, doc } from './data/helpers.js';
-import { Simulator, LABS, COMPLETIONS } from './terminal.js';
+import { Simulator, LABS, COMPLETIONS, clearSimulatorStorage } from './terminal.js';
+import { LIBRARY } from './data/library.js';
 import { renderForge } from './forge.js';
 import { coin, glyph, greek, trireme } from './ornaments.js';
 
@@ -21,7 +22,24 @@ const RANKS = [
 ];
 const PKEY = 'odyssey.progress.v1';
 const blank = () => ({ name: '', role: '', xp: 0, lessons: {}, trials: {}, oracle: {}, labs: {}, freeRoam: false });
-let P = (() => { try { return { ...blank(), ...JSON.parse(localStorage.getItem(PKEY)) }; } catch { return blank(); } })();
+// Progress comes from localStorage or an imported file: keep only known keys and plain values.
+function sanitize(raw) {
+  const p = blank();
+  if (!raw || typeof raw !== 'object') return p;
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const pick = (src, valid, check) => Object.fromEntries(Object.entries(src && typeof src === 'object' ? src : {})
+    .filter(([k, v]) => valid.has(k) && check(v)));
+  p.name = typeof raw.name === 'string' ? raw.name.slice(0, 40) : '';
+  p.role = Object.hasOwn(ROLES, raw.role) ? raw.role : '';
+  p.xp = Math.max(0, Math.min(num(raw.xp) ?? 0, 1e6));
+  p.lessons = pick(raw.lessons, new Set(LEVELS.flatMap((lv) => lv.lessons.map((ls) => `${lv.id}/${ls.id}`))), (v) => num(v) !== null);
+  p.trials = pick(raw.trials, new Set(LEVELS.map((lv) => lv.id)), (v) => num(v) !== null && v >= 0 && v <= 100);
+  p.oracle = pick(raw.oracle, new Set(SCENARIOS.map((x) => x.id)), (v) => v && typeof v === 'object');
+  p.labs = pick(raw.labs, new Set(LABS.map((x) => x.id)), (v) => num(v) !== null);
+  p.freeRoam = raw.freeRoam === true;
+  return p;
+}
+let P = (() => { try { return sanitize(JSON.parse(localStorage.getItem(PKEY))); } catch { return blank(); } })();
 const persist = () => { try { localStorage.setItem(PKEY, JSON.stringify(P)); } catch { /* storage unavailable */ } updateXpBox(); };
 
 function rankOf(xp) {
@@ -66,7 +84,7 @@ function nextStep() {
 
 // ------------------------------------------------------------------ router
 const routes = {
-  '': home, paths, level, lesson, trial, oracle, terminal, forge, codex, cheatsheet, profile,
+  '': home, paths, level, lesson, trial, oracle, terminal, forge, codex, cheatsheet, profile, beyond,
 };
 function route() {
   const [, name = '', ...args] = location.hash.replace(/^#/, '').split('/');
@@ -187,6 +205,7 @@ function home() {
     ${featureCard('helmet', 'Architecture Forge', 'Size a cloud and generate a proposal and diagram for customers.', '#/forge')}
     ${featureCard('scroll', 'Cheat sheet', 'Hundreds of commands, ports, states and config options, ready to print.', '#/cheatsheet')}
     ${featureCard('column', 'Codex', 'Every service, the log map, a glossary and trusted sources.', '#/codex')}
+    ${featureCard('owl', 'Beyond the map', 'Trusted sources for topics beyond the voyage: Kubernetes, DR, VMware migration, AI and more.', '#/beyond')}
     ${featureCard('laurel', 'Your hero', 'Relics, rank, progress export and free-roam mode for pros.', '#/profile')}
   </div>`;
 }
@@ -222,7 +241,7 @@ const PATHS = {
   lead: { levels: [1, 8, 9, 10, 12, 15], oracle: ['rabbit-partition', 'keystone-401', 'mtu-hang'], tools: ['oracle', 'forge'], why: 'Build a team that runs the cloud without heroes.' },
 };
 function paths(sel) {
-  const role = sel || P.role || 'sys';
+  const role = [sel, P.role, 'sys'].find((r) => Object.hasOwn(PATHS, r || ''));
   const p = PATHS[role];
   const lvls = p.levels.map((n) => LEVELS[n - 1]);
   const done = lvls.filter(trialPassed).length;
@@ -273,6 +292,7 @@ function level(id) {
       <div class="row">${coin(greek(lv.n), trialPassed(lv), 64, esc(lv.relic.name))}
       <div><b>${esc(lv.relic.name)}</b><br><span class="muted small">${esc(lv.relic.desc)}</span></div></div>
       ${labs.length ? `<h3>Practice in the terminal</h3>${labs.map((l) => `<a class="pill gold" href="#/terminal/${l.id}">${P.labs[l.id] ? '✓ ' : ''}${esc(l.title)}</a>`).join(' ')}` : ''}
+      ${LIBRARY.some((t) => t.levels.includes(lv.id)) ? `<h3>Beyond this island</h3><div class="tags">${LIBRARY.filter((t) => t.levels.includes(lv.id)).map((t) => `<a class="pill" href="#/beyond/${t.id}">${esc(t.title)}</a>`).join('')}</div>` : ''}
       ${oracles.length ? `<h3>Consult the Oracle</h3><div class="tags">${oracles.map((s) => `<a class="pill${P.oracle[s.id] ? ' ok' : ''}" href="#/oracle/${s.id}">${P.oracle[s.id] ? '✓ ' : ''}${esc(s.title)}</a>`).join('')}</div>` : ''}
     </div>
   </div>
@@ -306,11 +326,22 @@ function lesson(levelId, lessonId) {
       <div class="row">
         ${idx > 0 ? `<a class="btn ghost" href="#/lesson/${lv.id}/${lv.lessons[idx - 1].id}">← Previous</a>` : ''}
         <span class="spacer"></span>
-        <button class="btn gold" data-complete>${done ? 'Completed ✓ — continue' : 'Mark as learnt & continue'} →</button>
+        <button class="btn gold" data-complete${done ? '' : ' disabled'}>${done ? 'Completed ✓: continue' : 'Read to the end to continue'}</button>
       </div>
+      <div data-end aria-hidden="true" style="height:1px"></div>
     </article></div>`;
   applyRoleLens();
-  $('[data-complete]').addEventListener('click', () => {
+  const btn = $('[data-complete]');
+  if (!done) {
+    // The button unlocks once the reader reaches the end of the lesson.
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((en) => en.isIntersecting)) return;
+      btn.disabled = false; btn.textContent = 'Mark as learnt & continue'; io.disconnect();
+    });
+    io.observe($('[data-end]'));
+    cleanup = () => io.disconnect();
+  }
+  btn.addEventListener('click', () => {
     if (!P.lessons[lessonKey(lv, ls)]) { P.lessons[lessonKey(lv, ls)] = Date.now(); award(XP.lesson, 'Lesson learnt.'); }
     location.hash = next ? `#/lesson/${lv.id}/${next.id}` : `#/trial/${lv.id}`;
   });
@@ -322,7 +353,7 @@ function applyRoleLens() {
   });
 }
 function selectLens(group, key) {
-  group.querySelectorAll('[data-lens]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.lens === key)));
+  group.querySelectorAll('[data-lens]').forEach((b) => { const on = b.dataset.lens === key; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
   group.querySelectorAll('[data-lens-body]').forEach((b) => { b.hidden = b.dataset.lensBody !== key; });
 }
 
@@ -550,6 +581,49 @@ function cheatsheet() {
   app.querySelectorAll('[data-jump]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); document.getElementById(`cs-${a.dataset.jump}`)?.scrollIntoView({ behavior: 'smooth' }); }));
 }
 
+// ------------------------------------------------------------------ beyond the map
+const KIND_NOTE = {
+  Official: 'Project documentation', Foundation: 'OpenInfra Foundation', Upstream: 'Open source project',
+  Community: 'Independent practitioner', Vendor: 'Vendor source: useful, not neutral',
+};
+function beyond(focus) {
+  const roleFilter = { value: '' };
+  app.innerHTML = `<p class="eyebrow">Hic sunt dracones: here be dragons</p><h1>Beyond the map</h1>
+  <p class="lede">Topics the voyage does not yet teach in depth, with trusted sources to continue on your own. Links were checked in September 2026; each is labelled by who wrote it.</p>
+  <div class="row no-print" style="margin:6px 0 4px">
+    <input class="codex-search" style="flex:1;margin:0" type="search" placeholder="Search topics and sources…" data-search aria-label="Search beyond the map">
+  </div>
+  <div class="tags" style="margin:12px 0 4px" data-roles><button class="pill tc" data-role="">All roles</button>${Object.entries(ROLES).map(([k, v]) => `<button class="pill" data-role="${k}">${v}</button>`).join('')}</div>
+  <p class="small muted">${Object.entries(KIND_NOTE).map(([k, v]) => `<span class="kind kind-${k.toLowerCase()}">${k}</span> ${v}`).join(' · ')}</p>
+  <div class="grid cols-2" style="margin-top:14px">${LIBRARY.map((t) => `
+    <section class="card topic" id="topic-${t.id}" data-section data-roles-of="${t.roles.join(' ')}">
+      <div class="row" style="flex-wrap:nowrap;align-items:flex-start">${glyph(t.glyph, 44)}<div>
+        <h2 style="margin:0 0 4px;font-size:1.1rem">${esc(t.title)}</h2>
+        <p class="small" style="margin:0">${esc(t.why)}</p></div></div>
+      <ul class="sources">${t.links.map(([title, url, kind]) => `<li data-text="${esc(`${t.title} ${title} ${kind} ${t.why}`.toLowerCase())}">
+        <span class="kind kind-${kind.toLowerCase()}">${kind}</span> <a href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a></li>`).join('')}</ul>
+      <p class="small muted" style="margin:8px 0 0">For: ${t.roles.map((r) => ROLES[r]).join(', ')}.
+        Continue from: ${t.levels.map((id) => { const lv = levelById(id); return `<a href="#/level/${id}">Book ${bookNo(lv.n)}, ${esc(lv.place)}</a>`; }).join(' · ')}</p>
+    </section>`).join('')}</div>`;
+  const apply = () => {
+    const q = $('[data-search]').value.trim().toLowerCase();
+    app.querySelectorAll('.topic').forEach((sec) => {
+      const roleOk = !roleFilter.value || sec.dataset.rolesOf.split(' ').includes(roleFilter.value);
+      let any = false;
+      sec.querySelectorAll('[data-text]').forEach((li) => { const ok = !q || li.dataset.text.includes(q); li.hidden = !ok; any ||= ok; });
+      sec.hidden = !roleOk || !any;
+    });
+  };
+  $('[data-search]').addEventListener('input', apply);
+  $('[data-roles]').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-role]'); if (!b) return;
+    roleFilter.value = b.dataset.role;
+    app.querySelectorAll('[data-role]').forEach((x) => x.classList.toggle('tc', x === b));
+    apply();
+  });
+  if (focus) document.getElementById(`topic-${focus}`)?.scrollIntoView({ block: 'start' });
+}
+
 // ------------------------------------------------------------------ profile
 function profile() {
   const r = rankOf(P.xp);
@@ -587,12 +661,12 @@ function profile() {
     a.download = 'openstack-odyssey-progress.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
   $('[data-import]').addEventListener('change', async (e) => {
-    try { const data = JSON.parse(await e.target.files[0].text()); if (typeof data.xp !== 'number') throw new Error('bad file'); P = { ...blank(), ...data }; persist(); toast('Progress restored.'); profile(); }
+    try { const data = JSON.parse(await e.target.files[0].text()); if (typeof data?.xp !== 'number') throw new Error('bad file'); P = sanitize(data); persist(); toast('Progress restored.'); profile(); }
     catch { toast('That scroll could not be read.'); }
   });
   $('[data-reset]').addEventListener('click', () => {
     if (!confirm('Erase all progress, XP and relics? This cannot be undone.')) return;
-    P = blank(); persist(); sim?.reset(); toast('A new voyage begins.'); profile();
+    P = blank(); persist(); if (sim) sim.reset(); else clearSimulatorStorage(); toast('A new voyage begins.'); profile();
   });
 }
 
@@ -605,6 +679,14 @@ document.addEventListener('click', async (e) => {
   }
   const tab = e.target.closest('[data-lens]');
   if (tab) selectLens(tab.closest('[data-lens-group]'), tab.dataset.lens);
+});
+document.addEventListener('keydown', (e) => {
+  const tab = e.target.closest?.('[data-lens]');
+  if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+  const tabs = [...tab.parentElement.querySelectorAll('[data-lens]')];
+  let i = tabs.indexOf(tab);
+  i = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+  e.preventDefault(); tabs[i].focus(); selectLens(tab.closest('[data-lens-group]'), tabs[i].dataset.lens);
 });
 $('[data-menu]').addEventListener('click', (e) => {
   const nav = $('[data-nav]'); nav.classList.toggle('open');

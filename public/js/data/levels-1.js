@@ -375,7 +375,7 @@ ${lens({
 <tr><td><b>Canonical Sunbeam / MicroStack</b></td><td>Fast evaluation on Ubuntu</td><td>1+ hosts</td></tr></table>
 ${term('Kolla-Ansible all-in-one (abridged)', `
 $ python3 -m venv ~/kolla && source ~/kolla/bin/activate
-$ pip install -U pip 'ansible-core>=2.17,<2.19'
+$ pip install -U pip 'ansible-core>=2.19,<2.21'   # 2026.1 supports ansible-core 2.19–2.20
 $ pip install git+https://opendev.org/openstack/kolla-ansible@stable/2026.1
 $ kolla-ansible install-deps
 $ sudo mkdir -p /etc/kolla && sudo chown $USER:$USER /etc/kolla
@@ -390,7 +390,7 @@ $ kolla-ansible bootstrap-servers -i all-in-one
 $ kolla-ansible prechecks -i all-in-one
 $ kolla-ansible deploy -i all-in-one
 $ kolla-ansible post-deploy -i all-in-one   # writes /etc/kolla/clouds.yaml`)}
-<p class="small muted">Check the Kolla-Ansible quickstart for your exact release: supported host OS versions and the Ansible version window change between releases.</p>
+<p class="small muted">Check the Kolla-Ansible quickstart and release notes for your exact release: supported host OS versions and the Ansible version window change between releases (2026.1 needs Ansible 12–13, i.e. ansible-core 2.19–2.20).</p>
 ${note('prod', 'Keep your lab <b>disposable</b>. Snapshot the VMs after deploy, then practise failures: stop RabbitMQ, fill a disk, desync Fernet keys, kill ovn-controller. That is how the Underworld levels become easy.')}
 ${lens({
   sys: 'Kolla-Ansible AIO on a 32 GB VM is the best return on time for an operator.',
@@ -398,7 +398,7 @@ ${lens({
   pre: 'A small, well-rehearsed demo cloud (or Sunbeam on a mini PC) wins more deals than slides.',
   lead: 'Give every engineer a personal lab budget. Failure drills in labs prevent them in production.',
 })}`,
-        sources: [['Kolla-Ansible quickstart', doc('kolla-ansible', 'user/quickstart.html')], ['DevStack', `https://docs.openstack.org/devstack/latest/`]],
+        sources: [['Kolla-Ansible quickstart', doc('kolla-ansible', 'user/quickstart.html')], ['Kolla-Ansible 2026.1 release notes', 'https://docs.openstack.org/releasenotes/kolla-ansible/2026.1.html'], ['DevStack', `https://docs.openstack.org/devstack/latest/`]],
       },
     ],
     quiz: [

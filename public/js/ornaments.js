@@ -1,3 +1,4 @@
+// The coin gradients (#coin-bronze, #coin-worn) are defined once in index.html.
 // Black-figure ornaments: coins, a trireme, and small votive glyphs drawn as
 // inline SVG so they inherit the theme's colours (currentColor / CSS vars).
 
@@ -13,10 +14,6 @@ export function coin(letter, earned = true, size = 56, title = '') {
   }).join('');
   const face = earned ? 'url(#coin-bronze)' : 'url(#coin-worn)';
   return `<svg class="coin${earned ? ' earned' : ''}" viewBox="0 0 64 64" width="${size}" height="${size}" role="img" aria-label="${title || `Coin ${letter}`}">
-    <defs>
-      <radialGradient id="coin-bronze" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#f1cf7a"/><stop offset=".55" stop-color="#c1892e"/><stop offset="1" stop-color="#7a5218"/></radialGradient>
-      <radialGradient id="coin-worn" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#d9ccb2"/><stop offset=".6" stop-color="#a8997d"/><stop offset="1" stop-color="#6f6350"/></radialGradient>
-    </defs>
     <circle cx="32" cy="32" r="30.5" fill="${face}" stroke="#3a2614" stroke-width="1.5"/>
     <g fill="#3a2614" opacity=".55">${beads}</g>
     <circle cx="32" cy="32" r="23" fill="none" stroke="#3a2614" stroke-width="1" opacity=".6"/>

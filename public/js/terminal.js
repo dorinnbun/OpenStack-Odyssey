@@ -4,6 +4,11 @@
 
 const STORE_KEY = 'odyssey.sim.v1';
 
+/** Forget the saved lab state (used by "Reset all" when no simulator is loaded). */
+export function clearSimulatorStorage() {
+  try { localStorage.removeItem(STORE_KEY); } catch { /* storage unavailable */ }
+}
+
 const hex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, '0')).join('');
 const uuid = () => { const h = hex(16); return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`; };
 

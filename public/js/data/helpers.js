@@ -53,7 +53,7 @@ export const ROLES = {
 export function lens(map) {
   const keys = Object.keys(map);
   const tabs = keys.map((k, i) =>
-    `<button type="button" role="tab" data-lens="${k}" aria-selected="${i === 0}">${ROLES[k]}</button>`).join('');
+    `<button type="button" role="tab" data-lens="${k}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${ROLES[k]}</button>`).join('');
   const bodies = keys.map((k, i) =>
     `<div class="lens-body" data-lens-body="${k}"${i ? ' hidden' : ''}>${map[k]}</div>`).join('');
   return `<div class="lens" data-lens-group><div class="lens-title">Role lens — what this means for you</div>` +
