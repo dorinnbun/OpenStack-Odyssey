@@ -25,7 +25,7 @@ export const LIBRARY = [
   {
     id: 'backup-dr', glyph: 'amphora', title: 'Backup and disaster recovery',
     why: 'Snapshots live on the same backend as the volume. Real disaster recovery needs backups to a separate store, replication to a second site, and restores that have actually been rehearsed.',
-    roles: ['sys', 'sa', 'pa', 'lead'], levels: ['circe', 'scylla', 'calypso', 'ceph-medea', 'k8s-cerberus'],
+    roles: ['sys', 'sa', 'pa', 'lead'], levels: ['circe', 'scylla', 'calypso', 'ceph-medea', 'k8s-cerberus', 'pan-demeter'],
     links: [
       ['Cinder replication in OpenStack', 'https://docs.openstack.org/cinder/latest/admin/replication-in-openstack.html', 'Official'],
       ['Cinder volume replication for disaster recovery (Charm guide)', 'https://docs.openstack.org/charm-guide/latest/admin/storage/cinder-replication-dr.html', 'Official'],
@@ -52,7 +52,7 @@ export const LIBRARY = [
   {
     id: 'cost', glyph: 'scroll', title: 'Cost, TCO and chargeback',
     why: 'Presales and architects must justify the business case. Learn how to model total cost of ownership and how to rate usage for showback or chargeback.',
-    roles: ['pre', 'pa', 'lead', 'sa'], levels: ['phaeacian-court', 'sirens'],
+    roles: ['pre', 'pa', 'lead', 'sa'], levels: ['phaeacian-court', 'sirens', 'pan-themis'],
     links: [
       ['CloudKitty (rating service) documentation', 'https://docs.openstack.org/cloudkitty/latest/', 'Official'],
       ['Rating in OpenStack with CloudKitty (Red Hat)', 'https://www.redhat.com/en/blog/taming-costs-cloud-environments-rating-openstack-cloudkitty', 'Vendor'],
@@ -65,7 +65,7 @@ export const LIBRARY = [
   {
     id: 'ai-gpu', glyph: 'lamp', title: 'AI and GPU infrastructure',
     why: 'GPU passthrough, vGPU and MIG, accelerator management, and the RDMA/InfiniBand fabrics that AI training needs.',
-    roles: ['sa', 'pa', 'sys', 'net'], levels: ['cyclops', 'scheria', 'phaeacian-court', 'k8s-geryon'],
+    roles: ['sa', 'pa', 'sys', 'net'], levels: ['cyclops', 'scheria', 'phaeacian-court', 'k8s-geryon', 'pan-hephaestus'],
     links: [
       ['OpenStack for AI white paper', 'https://www.openstack.org/openstack-for-ai-white-paper', 'Foundation'],
       ['Nova: attaching virtual GPUs (vGPU)', 'https://docs.openstack.org/nova/latest/admin/virtual-gpu.html', 'Official'],
@@ -79,7 +79,7 @@ export const LIBRARY = [
   {
     id: 'automation', glyph: 'column', title: 'Automation: SDK, Ansible, Terraform',
     why: 'Everything in OpenStack is an API. These are the standard tools for managing it as code.',
-    roles: ['sys', 'net', 'sa', 'lead'], levels: ['lotus', 'calypso'],
+    roles: ['sys', 'net', 'sa', 'lead'], levels: ['lotus', 'calypso', 'pan-apollo', 'pan-hermes'],
     links: [
       ['openstacksdk user guide (Python)', 'https://docs.openstack.org/openstacksdk/latest/user/', 'Official'],
       ['Ansible openstack.cloud collection', 'https://docs.ansible.com/projects/ansible/latest/collections/openstack/cloud/index.html', 'Upstream'],
@@ -117,7 +117,7 @@ export const LIBRARY = [
   {
     id: 'ipv6-dns', glyph: 'trident', title: 'IPv6 and DNS',
     why: 'IPv6 addressing modes and prefix delegation, and automatic DNS records for ports and floating IPs with Designate.',
-    roles: ['net', 'sys', 'sa'], levels: ['laestrygonians', 'scheria', 'ovn-minotaur'],
+    roles: ['net', 'sys', 'sa'], levels: ['laestrygonians', 'scheria', 'ovn-minotaur', 'pan-athena'],
     links: [
       ['Neutron: IPv6', 'https://docs.openstack.org/neutron/latest/admin/config-ipv6.html', 'Official'],
       ['Neutron: DNS integration with an external service', 'https://docs.openstack.org/neutron/latest/admin/config-dns-int-ext-serv.html', 'Official'],
@@ -127,7 +127,7 @@ export const LIBRARY = [
   {
     id: 'swift-ironic', glyph: 'amphora', title: 'Object storage and bare metal in depth',
     why: 'How Swift places data with rings and storage policies, and how Ironic provisions physical servers (including standalone with Bifrost).',
-    roles: ['sys', 'sa', 'pa'], levels: ['circe', 'scheria', 'ceph-colchis'],
+    roles: ['sys', 'sa', 'pa'], levels: ['circe', 'scheria', 'ceph-colchis', 'pan-poseidon', 'pan-hephaestus'],
     links: [
       ['Swift architectural overview', 'https://docs.openstack.org/swift/latest/overview_architecture.html', 'Official'],
       ['Swift: the rings', 'https://docs.openstack.org/swift/latest/overview_ring.html', 'Official'],

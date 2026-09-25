@@ -983,4 +983,144 @@ node_cpu_seconds_total{…}   0.04e+06`,
       },
     },
   },
+  {
+    id: 'heat-create-failed',
+    title: 'The Oracle Speaks in Riddles',
+    difficulty: 2,
+    tags: ['Heat', 'Nova', 'Quota'],
+    summary: 'A Heat stack goes CREATE_FAILED with a vague message. Find the real cause deep inside nested stacks.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'The web team deploys <code>shop</code> from a template with an autoscaling group. It fails. The top-level status says little.',
+        out: `$ openstack stack show shop -c stack_status -c stack_status_reason
++---------------------+------------------------------------------------------------+
+| stack_status        | CREATE_FAILED                                              |
+| stack_status_reason | Resource CREATE failed: ResourceInError: resources.web_asg |
++---------------------+------------------------------------------------------------+`,
+        choices: [
+          { t: 'Delete the stack and create it again.', wrong: 'Retrying without a cause wastes time and can leave orphans. Read the events first.' },
+          { t: 'List the stack events, including nested stacks, to find the first resource that failed.', go: 'b' },
+          { t: 'Restart heat-engine.', wrong: 'Heat worked fine: it reports a failure from another service. Look at what it reports.' },
+        ],
+      },
+      b: {
+        text: 'The nested events show the first failure:',
+        out: `$ openstack stack event list shop --nested-depth 3 | grep -i failed
+2026-09-25 10:02:14 [shop-web_asg-x7k2-server-2]: CREATE_FAILED  ResourceInError: resources.server:
+  Went to status ERROR due to "Message: Quota exceeded for cores: Requested 4, but already used 18 of 20 cores, Code: 403"`,
+        choices: [
+          { t: 'The autoscaling group asked for 3 × 4 vCPU; the project only had 2 cores left. Check the quota and the template sizes.', go: 'c' },
+          { t: 'The image is broken.', wrong: 'The message is clear: a 403 quota error on cores, not an image problem.' },
+        ],
+      },
+      c: {
+        text: 'Quota usage confirms it. What is the right fix?',
+        out: `$ openstack quota show --usage shop-project -c cores
+| cores | limit 20 | in_use 18 | reserved 0 |`,
+        choices: [
+          { t: 'Agree the right size with the team: raise the cores quota (or shrink min_size / flavor), then run openstack stack update or delete and recreate.', go: 'd' },
+          { t: 'Set the quota to unlimited (-1) for this project.', wrong: 'Unlimited quotas remove the guardrail that protects everyone else. Size it deliberately.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'After the quota change the stack is recreated and goes <code>CREATE_COMPLETE</code>. You add a pre-check to the pipeline (<code>openstack quota show --usage</code>) and set <code>min_size</code> so it fits the budget.',
+        lesson: 'Heat usually reports someone else\'s error. Use <code>stack event list --nested-depth N</code> to find the first failed resource, then fix it in the service that failed (here Nova quota).',
+      },
+    },
+  },
+  {
+    id: 'trove-build',
+    title: 'The Silent Scribe',
+    difficulty: 3,
+    tags: ['Trove', 'RabbitMQ', 'Networking'],
+    summary: 'Every new Trove database instance stays in BUILD and then goes ERROR after a timeout.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'A new MySQL instance never becomes ACTIVE. The Nova VM under it is ACTIVE and has an IP. What is Trove waiting for?',
+        out: `$ openstack database instance show db1 -c status -c fault
+| status | ERROR |
+| fault  | Polling request timed out. |
+$ openstack server list --all-projects --name db1
+| 7c1e… | db1 | ACTIVE | trove-mgmt=172.30.0.41; tenant-net=10.10.0.12 |`,
+        choices: [
+          { t: 'The guest agent inside the VM must report back to Trove over RabbitMQ. Check whether it can.', go: 'b' },
+          { t: 'The flavor is too small for MySQL.', wrong: 'A small flavor makes MySQL slow, but the VM booted and Trove heard nothing at all. Look at the path back.' },
+          { t: 'Recreate the datastore version.', wrong: 'That changes nothing about the communication path. Find the broken link first.' },
+        ],
+      },
+      b: {
+        text: 'You look at the guest agent log from the console (or the Trove debug log). What do you see?',
+        out: `$ openstack console log show db1 | grep -i amqp
+guest-agent: ERROR oslo.messaging._drivers.impl_rabbit
+  [-] AMQP server on 192.168.10.5:5672 is unreachable: timed out. Trying again in 32 seconds.`,
+        choices: [
+          { t: 'Check routing and firewall between the Trove management network (172.30.0.0/24) and the RabbitMQ address 192.168.10.5:5672.', go: 'c' },
+          { t: 'Restart RabbitMQ.', wrong: 'Other services use RabbitMQ fine. Only the guest cannot reach it: this is a path problem.' },
+        ],
+      },
+      c: {
+        text: 'The management network has no route to the controllers\' internal VIP; a recent firewall change also dropped the old rule. What is the fix?',
+        out: `$ openstack subnet show trove-mgmt-subnet -c host_routes -c gateway_ip
+| gateway_ip  | None |
+| host_routes |      |`,
+        choices: [
+          { t: 'Add a host route (or gateway) to the internal network and allow TCP 5672 from 172.30.0.0/24 to the controllers only; better still, give guests a dedicated RabbitMQ vhost/user.', go: 'd' },
+          { t: 'Put the guests on the public network.', wrong: 'That exposes the database VMs and the message bus. Keep a separate, restricted management network.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'With the route and the firewall rule in place, the guest agent connects, reports <code>ACTIVE</code>, and new instances build in about two minutes.',
+        lesson: 'Trove needs a working path from the guest agent to the message bus (via the management network). When the VM is ACTIVE but the database is not, check that path first: routes, firewall and credentials.',
+      },
+    },
+  },
+  {
+    id: 'ironic-clean-failed',
+    title: 'The Forge Will Not Cool',
+    difficulty: 3,
+    tags: ['Ironic', 'Networking'],
+    summary: 'After a tenant deletes a bare-metal instance, the node lands in "clean failed" and can no longer be scheduled.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'Node <code>bm-07</code> finished a workload. Instead of returning to <code>available</code>, it is stuck.',
+        out: `$ openstack baremetal node show bm-07 -c provision_state -c maintenance -c last_error
+| provision_state | clean failed |
+| maintenance     | True |
+| last_error      | Timeout reached while cleaning the node. Please check if the ramdisk responsible for the cleaning is running on the node. |`,
+        choices: [
+          { t: 'Set the node to available with provide right now.', wrong: 'Skipping cleaning gives the next tenant disks with the old tenant\'s data. Find why cleaning failed.' },
+          { t: 'Find out whether the cleaning ramdisk (IPA) booted and could call back to Ironic.', go: 'b' },
+          { t: 'Replace the node\'s disks.', wrong: 'Nothing points to a hardware fault yet. The error says the ramdisk did not answer.' },
+        ],
+      },
+      b: {
+        text: 'The node\'s serial console shows the ramdisk booted but never got an address on the cleaning network:',
+        out: `$ openstack baremetal node show bm-07 -f value -c driver_info | grep -o "cleaning_network[^,]*"
+cleaning_network: 'provisioning'
+(console) ironic-python-agent: No DHCP offer received on eno1, retrying…`,
+        choices: [
+          { t: 'Check the switch port: after the tenant used the node, the port must move back from the tenant VLAN to the provisioning network.', go: 'c' },
+          { t: 'Increase the cleaning timeout.', wrong: 'Waiting longer will not give the ramdisk a DHCP offer.' },
+        ],
+      },
+      c: {
+        text: 'networking-generic-switch logs show the reconfiguration was refused because of an expired switch password. The port is still in the tenant VLAN. What now?',
+        out: `ironic-conductor.log: ERROR ... networking_generic_switch ... Authentication failed for switch leaf-12`,
+        choices: [
+          { t: 'Fix the switch credentials, then: baremetal node maintenance unset bm-07 && baremetal node manage bm-07 && baremetal node provide bm-07 (it cleans again).', go: 'd' },
+          { t: 'Move the port manually on the switch and mark the node available.', wrong: 'Manual changes drift from what Ironic believes, and you still skip cleaning. Fix the automation and let Ironic re-clean.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'With valid credentials Ironic moves the port to the provisioning VLAN, the ramdisk gets DHCP, disks are wiped and the node returns to <code>available</code>. You add an alert on nodes in <code>clean failed</code> and on switch-auth errors.',
+        lesson: 'In multi-tenant bare metal, cleaning depends on the network: the port must move back to the provisioning network. When cleaning times out, follow the chain: ramdisk → DHCP → switch configuration → credentials.',
+      },
+    },
+  },
 ];

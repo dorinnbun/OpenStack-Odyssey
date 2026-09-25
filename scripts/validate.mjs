@@ -7,6 +7,7 @@ import { LABS } from '../public/js/terminal.js';
 import { LIBRARY } from '../public/js/data/library.js';
 import { EPICS } from '../public/js/data/epics.js';
 import { ROLES } from '../public/js/data/helpers.js';
+import { SERVICES } from '../public/js/data/codex.js';
 
 const MAIN = [...LEVELS_1, ...LEVELS_2, ...LEVELS_3];
 const VOYAGES = [{ id: 'odyssey', levels: MAIN }, ...EPICS];
@@ -46,5 +47,13 @@ LIBRARY.forEach((t) => {
     if (!KINDS.has(kind)) errors.push(`library ${t.id}: unknown kind ${kind} for ${title}`);
   });
 });
+SERVICES.forEach(([code, , , , proj, learn]) => {
+  const [, kind, a, b] = (learn || '').match(/^#\/(level|lesson|epic)\/([^/]+)(?:\/(.+))?$/) || [];
+  const lv = LEVELS.find((l) => l.id === a);
+  const ok = kind === 'epic' ? EPICS.some((v) => v.id === a)
+    : kind === 'level' ? !!lv : kind === 'lesson' ? !!lv?.lessons.some((x) => x.id === b) : false;
+  if (!ok) errors.push(`codex ${code}: learn link ${learn} does not resolve`);
+  if (!proj) errors.push(`codex ${code}: no docs project`);
+});
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
-console.log(`OK: ${VOYAGES.length} voyages, ${LEVELS.length} levels, ${LEVELS.reduce((t, l) => t + l.lessons.length, 0)} lessons, ${LEVELS.reduce((t, l) => t + l.quiz.length, 0)} questions, ${SCENARIOS.length} oracle trials, ${LABS.length} labs, ${LIBRARY.length} library topics / ${LIBRARY.reduce((t, x) => t + x.links.length, 0)} sources`);
+console.log(`OK: ${VOYAGES.length} voyages, ${LEVELS.length} levels, ${LEVELS.reduce((t, l) => t + l.lessons.length, 0)} lessons, ${LEVELS.reduce((t, l) => t + l.quiz.length, 0)} questions, ${SCENARIOS.length} oracle trials, ${LABS.length} labs, ${SERVICES.length} codex services, ${LIBRARY.length} library topics / ${LIBRARY.reduce((t, x) => t + x.links.length, 0)} sources`);

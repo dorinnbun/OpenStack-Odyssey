@@ -2,7 +2,7 @@ import { LEVELS_1 } from './data/levels-1.js';
 import { LEVELS_2 } from './data/levels-2.js';
 import { LEVELS_3 } from './data/levels-3.js';
 import { SCENARIOS } from './data/scenarios.js';
-import { SERVICES, LOGMAP, GLOSSARY, SOURCES } from './data/codex.js';
+import { SERVICES, RETIRED, LOGMAP, GLOSSARY, SOURCES } from './data/codex.js';
 import { CHEAT, PORTS, STATES, CONFIG, SYMPTOMS } from './data/cheatsheet.js';
 import { esc, ROLES, doc } from './data/helpers.js';
 import { Simulator, LABS, COMPLETIONS, clearSimulatorStorage } from './terminal.js';
@@ -87,7 +87,7 @@ function toast(msg) {
 const lessonKey = (lv, ls) => `${lv.id}/${ls.id}`;
 const levelDone = (lv) => lv.lessons.filter((ls) => P.lessons[lessonKey(lv, ls)]).length;
 const trialPassed = (lv) => (P.trials[lv.id] || 0) >= 70;
-const unlocked = (lv) => P.freeRoam || lv.n === 1 || trialPassed(prevOf(lv));
+const unlocked = (lv) => P.freeRoam || voyageOf(lv).openAccess || lv.n === 1 || trialPassed(prevOf(lv));
 const levelById = (id) => ALL_LEVELS.find((l) => l.id === id);
 const totalLessons = LEVELS.reduce((t, l) => t + l.lessons.length, 0);
 function nextStep(levels = LEVELS) {
@@ -287,12 +287,12 @@ function epic(id) {
 
 // ------------------------------------------------------------------ paths
 const PATHS = {
-  sys: { levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15], epics: ['argonautica', 'labyrinth', 'argus', 'helmsman'], oracle: SCENARIOS.map((s) => s.id), tools: ['terminal', 'cheatsheet'], why: 'Operate, fix and upgrade the platform end to end.' },
-  net: { levels: [1, 2, 3, 6, 8, 10, 13, 15], epics: ['labyrinth', 'helmsman', 'argus'], oracle: ['dhcp-silence', 'floating-ip', 'mtu-hang', 'octavia-pending'], tools: ['terminal', 'cheatsheet'], why: 'Master Neutron, OVN, MTU, SR-IOV, BGP and fabric integration.' },
-  pre: { levels: [1, 2, 4, 6, 7, 12, 14], epics: ['argonautica', 'helmsman', 'argus'], oracle: ['no-valid-host', 'floating-ip'], tools: ['forge', 'codex'], why: 'Explain value credibly, qualify requirements and size solutions.' },
-  sa: { levels: [1, 4, 6, 7, 10, 11, 13, 14], epics: ['argonautica', 'labyrinth', 'helmsman', 'argus'], oracle: ['no-valid-host', 'noisy-neighbor', 'live-migration'], tools: ['forge', 'cheatsheet'], why: 'Turn requirements into designs, ADRs and bills of materials.' },
-  pa: { levels: [1, 10, 11, 12, 13, 14, 15], epics: ['argonautica', 'labyrinth', 'helmsman', 'argus'], oracle: ['noisy-neighbor', 'rabbit-partition', 'keystone-401'], tools: ['forge', 'codex'], why: 'Set principles, reference architectures and the platform strategy.' },
-  lead: { levels: [1, 8, 9, 10, 12, 15], epics: ['argus', 'helmsman', 'argonautica', 'labyrinth'], oracle: ['rabbit-partition', 'keystone-401', 'mtu-hang'], tools: ['oracle', 'forge'], why: 'Build a team that runs the cloud without heroes.' },
+  sys: { levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15], epics: ['argonautica', 'labyrinth', 'argus', 'helmsman', 'pantheon'], oracle: SCENARIOS.map((s) => s.id), tools: ['terminal', 'cheatsheet'], why: 'Operate, fix and upgrade the platform end to end.' },
+  net: { levels: [1, 2, 3, 6, 8, 10, 13, 15], epics: ['labyrinth', 'helmsman', 'argus', 'pantheon'], oracle: ['dhcp-silence', 'floating-ip', 'mtu-hang', 'octavia-pending'], tools: ['terminal', 'cheatsheet'], why: 'Master Neutron, OVN, MTU, SR-IOV, BGP and fabric integration.' },
+  pre: { levels: [1, 2, 4, 6, 7, 12, 14], epics: ['argonautica', 'helmsman', 'argus', 'pantheon'], oracle: ['no-valid-host', 'floating-ip'], tools: ['forge', 'codex'], why: 'Explain value credibly, qualify requirements and size solutions.' },
+  sa: { levels: [1, 4, 6, 7, 10, 11, 13, 14], epics: ['argonautica', 'labyrinth', 'helmsman', 'argus', 'pantheon'], oracle: ['no-valid-host', 'noisy-neighbor', 'live-migration'], tools: ['forge', 'cheatsheet'], why: 'Turn requirements into designs, ADRs and bills of materials.' },
+  pa: { levels: [1, 10, 11, 12, 13, 14, 15], epics: ['argonautica', 'labyrinth', 'helmsman', 'argus', 'pantheon'], oracle: ['noisy-neighbor', 'rabbit-partition', 'keystone-401'], tools: ['forge', 'codex'], why: 'Set principles, reference architectures and the platform strategy.' },
+  lead: { levels: [1, 8, 9, 10, 12, 15], epics: ['argus', 'helmsman', 'argonautica', 'labyrinth', 'pantheon'], oracle: ['rabbit-partition', 'keystone-401', 'mtu-hang'], tools: ['oracle', 'forge'], why: 'Build a team that runs the cloud without heroes.' },
 };
 function paths(sel) {
   const role = [sel, P.role, 'sys'].find((r) => Object.hasOwn(PATHS, r || ''));
@@ -588,15 +588,20 @@ function codex() {
   <p class="lede">The pantheon of OpenStack services, where to look when things break, a glossary and the sources this journey is built on.</p>
   <input class="codex-search" type="search" placeholder="Search services, logs, terms…" data-search aria-label="Search the codex">
   <h2>Services</h2>
-  <div class="grid cols-3" data-filterable>${SERVICES.map(([code, name, cat, desc, proj]) => `
+  <p class="small muted">${SERVICES.length} entries: every service in the 2026.1 release, plus the tools and backends a real cloud needs. Each links to a lesson on this voyage and to its docs.</p>
+  <div class="grid cols-3" data-filterable>${SERVICES.map(([code, name, cat, desc, proj, learn]) => `
     <div class="card svc" data-text="${esc(`${code} ${name} ${cat} ${desc}`.toLowerCase())}">
       <span class="code">${esc(cat)}</span><h3>${esc(code)} <span class="muted small">· ${esc(name)}</span></h3>
-      <span class="small">${esc(desc)}</span><a class="small" href="${doc(proj)}" target="_blank" rel="noopener">2026.1 docs →</a></div>`).join('')}</div>
+      <span class="small">${esc(desc)}</span>
+      <span class="small svc-links"><a href="${esc(learn)}">Learn it →</a> · <a href="${proj.startsWith('http') ? esc(proj) : doc(proj)}" target="_blank" rel="noopener">${proj.startsWith('http') ? 'Docs' : '2026.1 docs'} ↗</a></span></div>`).join('')}</div>
+  <h3>Retired projects and what replaced them</h3>
+  <div class="prose" style="max-width:none"><table data-filterable><tr><th>Project</th><th>Was</th><th>Use today</th></tr>
+  ${RETIRED.map((r) => `<tr data-text="${esc(r.join(' ').toLowerCase())}">${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table></div>
   <h2>Where the shades speak: symptom → log</h2>
   <div class="prose" style="max-width:none"><table data-filterable><tr><th>Symptom</th><th>Service</th><th>Log (Kolla: /var/log/kolla/…)</th><th>Look for</th></tr>
   ${LOGMAP.map((r) => `<tr data-text="${esc(r.join(' ').toLowerCase())}">${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table></div>
   <h2>Glossary</h2>
-  <div class="grid cols-2" data-filterable>${GLOSSARY.map(([t, d]) => `<div class="card" data-text="${esc(`${t} ${d}`.toLowerCase())}"><b>${esc(t)}</b><br><span class="small">${esc(d)}</span></div>`).join('')}</div>
+  <div class="grid cols-2" data-filterable>${[...GLOSSARY].sort((a, b) => a[0].localeCompare(b[0])).map(([t, d]) => `<div class="card" data-text="${esc(`${t} ${d}`.toLowerCase())}"><b>${esc(t)}</b><br><span class="small">${esc(d)}</span></div>`).join('')}</div>
   <h2>Sources</h2>
   <ul>${SOURCES.map(([t, u]) => `<li><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></li>`).join('')}</ul>`;
   bindSearch();
