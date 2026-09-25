@@ -2,6 +2,8 @@
 // It models just enough of Keystone, Nova, Neutron, Glance and Cinder to teach
 // real workflows and real failure modes.
 
+import { initialCeph, cephExec, CEPH_LABS, CEPH_COMPLETIONS } from './ceph-sim.js';
+
 const STORE_KEY = 'odyssey.sim.v1';
 
 /** Forget the saved lab state (used by "Reset all" when no simulator is loaded). */
@@ -57,6 +59,8 @@ function initialState() {
 }
 // public subnet created lazily so ids are stable
 function seed(s) {
+  if (!s.ceph) s.ceph = initialCeph();
+  if (!s.labSetup) s.labSetup = {};
   if (!s.subnets.find((x) => x.name === 'public-subnet')) {
     const pub = s.networks.find((n) => n.name === 'public');
     const sub = { id: uuid(), name: 'public-subnet', network: pub.id, cidr: '203.0.113.0/24', gateway: '203.0.113.1', dns: [], next: 10 };
@@ -94,6 +98,20 @@ function parseArgs(tokens) {
   return { pos, opts, get: (k) => opts[k]?.at(-1), all: (k) => opts[k] || [] };
 }
 
+/** Split "a && b" into commands, ignoring && inside quotes. */
+function splitChain(line) {
+  const parts = []; let cur = ''; let q = null;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (q) { if (ch === q) q = null; cur += ch; continue; }
+    if (ch === '"' || ch === "'") { q = ch; cur += ch; continue; }
+    if (ch === '&' && line[i + 1] === '&') { parts.push(cur.trim()); cur = ''; i++; continue; }
+    cur += ch;
+  }
+  parts.push(cur.trim());
+  return parts.filter(Boolean);
+}
+
 class CLIError extends Error {}
 const fail = (m) => { throw new CLIError(m); };
 
@@ -112,6 +130,12 @@ export class Simulator {
   }
   reset() { this.s = seed(initialState()); this.done = new Set(); this.save(); }
   mark(e) { this.done.add(e); }
+  /** Some labs start from a prepared state (for example a failed disk). Apply it once. */
+  ensureSetup(lab) {
+    if (!lab?.setup || this.s.labSetup[lab.id]) return false;
+    lab.setup(this.s); this.s.labSetup[lab.id] = true; this.save();
+    return true;
+  }
 
   // ------------------------------------------------------------ helpers
   find(list, ref, kind) {
@@ -172,8 +196,18 @@ export class Simulator {
   exec(line) {
     const trimmed = line.trim();
     if (!trimmed) return { out: '' };
+    const outs = []; let last = {};
+    for (const part of splitChain(trimmed)) {
+      last = this.run1(part);
+      if (last.out) outs.push(last.out);
+      if (last.cls === 'err') break;
+    }
+    return { out: outs.join('\n'), cls: last.cls };
+  }
+
+  run1(line) {
     try {
-      const res = this.shell(trimmed);
+      const res = this.shell(line);
       this.save();
       return typeof res === 'string' ? { out: res } : res;
     } catch (e) {
@@ -213,6 +247,8 @@ export class Simulator {
       case 'ssh': return this.ssh(parseArgs(rest));
       case 'reset-lab': this.reset(); return { out: 'The seas are calm again: simulator state reset.', cls: 'ok' };
       case 'openstack': return this.openstack(rest);
+      case 'ceph': case 'rbd': return cephExec(this, cmd, rest);
+      case 'cephadm': return 'You are already inside "cephadm shell" on ceph-01: type ceph or rbd commands directly.';
       case 'nova': case 'neutron': case 'cinder': case 'glance':
         return { out: `The legacy "${cmd}" client is deprecated for most tasks. Use the unified client: openstack …`, cls: 'err' };
       case 'sudo': return { out: 'This lab is an OpenStack user shell. Admin host commands are shown in lessons and the Oracle.', cls: 'err' };
@@ -549,6 +585,7 @@ P.cmds = {
 };
 
 export const LABS = [
+  // OpenStack labs (the Odyssey); Ceph labs (the Argonautica) are appended below
   {
     id: 'first-light', title: 'First Light at Ithaca', level: 'Levels 1–3',
     intro: 'Authenticate, get a token and explore what the cloud offers.',
@@ -604,6 +641,7 @@ export const LABS = [
       ['Confirm it is in-use', 'openstack volume list', (d) => d.has('volume-inuse-seen')],
     ],
   },
+  ...CEPH_LABS,
 ];
 
 const OPENRC = `export OS_AUTH_URL=https://keystone.odyssey.example:5000/v3
@@ -629,6 +667,10 @@ openstack (output options: -f table|json|value|yaml|csv, -c <column>):
   router create|list|show|set --external-gateway|add subnet
   security group create|list · security group rule create|list
   floating ip create|list|delete · volume create|list|show|delete
-  admin only: compute service list · hypervisor list · network agent list`;
+  admin only: compute service list · hypervisor list · network agent list
 
-export const COMPLETIONS = Object.keys(P.cmds).map((k) => `openstack ${k}`);
+Ceph (the Argonautica labs): ceph --help · rbd help
+  ceph -s · ceph health detail · ceph osd tree · ceph df · ceph osd pool create · rbd create …
+Chain commands with &&, e.g.  ceph osd pool create images && rbd pool init images`;
+
+export const COMPLETIONS = [...Object.keys(P.cmds).map((k) => `openstack ${k}`), ...CEPH_COMPLETIONS];

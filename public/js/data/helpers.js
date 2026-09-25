@@ -36,6 +36,7 @@ const CALLOUT = {
   prod: 'In production',
   warn: 'Beware',
   myth: 'From the epic',
+  plain: 'In plain words',
 };
 export const note = (type, html, title) =>
   `<div class="callout ${type}"><b>${title || CALLOUT[type] || 'Note'}</b>${html}</div>`;

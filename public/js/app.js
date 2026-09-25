@@ -6,11 +6,31 @@ import { SERVICES, LOGMAP, GLOSSARY, SOURCES } from './data/codex.js';
 import { CHEAT, PORTS, STATES, CONFIG, SYMPTOMS } from './data/cheatsheet.js';
 import { esc, ROLES, doc } from './data/helpers.js';
 import { Simulator, LABS, COMPLETIONS, clearSimulatorStorage } from './terminal.js';
+import { CEPH_LABS } from './ceph-sim.js';
 import { LIBRARY } from './data/library.js';
+import { EPICS } from './data/epics.js';
 import { renderForge } from './forge.js';
 import { coin, glyph, greek, trireme } from './ornaments.js';
 
 const LEVELS = [...LEVELS_1, ...LEVELS_2, ...LEVELS_3];
+// Every journey is a "voyage": the main Odyssey (OpenStack) plus side epics
+// for external projects (Ceph, Kubernetes). Each has its own unlock chain.
+const ODYSSEY = {
+  id: 'odyssey', title: 'The Odyssey', greekTitle: 'ΟΔΥΣΣΕΙΑ', project: 'OpenStack', glyph: 'owl', levels: LEVELS,
+  tagline: 'OpenStack from your first token to expert troubleshooting and architecture',
+  map: [[80, 250, 1], [160, 322, 1], [255, 272, 1], [330, 185, 1], [395, 105, -1], [490, 88, -1], [575, 160, 1],
+    [540, 262, -1], [620, 330, 1], [710, 282, 1], [770, 192, 1], [720, 100, -1], [820, 64, -1], [890, 150, 1], [925, 272, 1]],
+  short: ['Ithaca', 'Cicones', 'Lotus-Eaters', 'Cyclops', 'Aeolus', 'Laestrygonians', 'Aeaea', 'Underworld',
+    'Sirens', 'Scylla & Charybdis', 'Thrinacia', 'Ogygia', 'Scheria', 'Court of Alcinous', 'Home to Ithaca'],
+};
+const VOYAGES = [ODYSSEY, ...EPICS];
+const VOYAGE_OF = new Map(VOYAGES.flatMap((v) => v.levels.map((lv) => [lv.id, v])));
+const ALL_LEVELS = VOYAGES.flatMap((v) => v.levels);
+const voyageOf = (lv) => VOYAGE_OF.get(lv.id);
+const prevOf = (lv) => voyageOf(lv).levels[lv.n - 2];
+const nextOf = (lv) => voyageOf(lv).levels[lv.n];
+const voyageById = (id) => VOYAGES.find((v) => v.id === id);
+const CEPH_LAB_IDS = new Set(CEPH_LABS.map((l) => l.id));
 const $ = (sel, el = document) => el.querySelector(sel);
 const app = $('#app');
 
@@ -32,8 +52,8 @@ function sanitize(raw) {
   p.name = typeof raw.name === 'string' ? raw.name.slice(0, 40) : '';
   p.role = Object.hasOwn(ROLES, raw.role) ? raw.role : '';
   p.xp = Math.max(0, Math.min(num(raw.xp) ?? 0, 1e6));
-  p.lessons = pick(raw.lessons, new Set(LEVELS.flatMap((lv) => lv.lessons.map((ls) => `${lv.id}/${ls.id}`))), (v) => num(v) !== null);
-  p.trials = pick(raw.trials, new Set(LEVELS.map((lv) => lv.id)), (v) => num(v) !== null && v >= 0 && v <= 100);
+  p.lessons = pick(raw.lessons, new Set(ALL_LEVELS.flatMap((lv) => lv.lessons.map((ls) => `${lv.id}/${ls.id}`))), (v) => num(v) !== null);
+  p.trials = pick(raw.trials, new Set(ALL_LEVELS.map((lv) => lv.id)), (v) => num(v) !== null && v >= 0 && v <= 100);
   p.oracle = pick(raw.oracle, new Set(SCENARIOS.map((x) => x.id)), (v) => v && typeof v === 'object');
   p.labs = pick(raw.labs, new Set(LABS.map((x) => x.id)), (v) => num(v) !== null);
   p.freeRoam = raw.freeRoam === true;
@@ -69,11 +89,11 @@ function toast(msg) {
 const lessonKey = (lv, ls) => `${lv.id}/${ls.id}`;
 const levelDone = (lv) => lv.lessons.filter((ls) => P.lessons[lessonKey(lv, ls)]).length;
 const trialPassed = (lv) => (P.trials[lv.id] || 0) >= 70;
-const unlocked = (lv) => P.freeRoam || lv.n === 1 || trialPassed(LEVELS[lv.n - 2]);
-const levelById = (id) => LEVELS.find((l) => l.id === id);
+const unlocked = (lv) => P.freeRoam || lv.n === 1 || trialPassed(prevOf(lv));
+const levelById = (id) => ALL_LEVELS.find((l) => l.id === id);
 const totalLessons = LEVELS.reduce((t, l) => t + l.lessons.length, 0);
-function nextStep() {
-  for (const lv of LEVELS) {
+function nextStep(levels = LEVELS) {
+  for (const lv of levels) {
     if (!unlocked(lv)) return { lv, href: `#/level/${lv.id}` };
     const ls = lv.lessons.find((x) => !P.lessons[lessonKey(lv, x)]);
     if (ls) return { lv, ls, href: `#/lesson/${lv.id}/${ls.id}` };
@@ -84,7 +104,7 @@ function nextStep() {
 
 // ------------------------------------------------------------------ router
 const routes = {
-  '': home, paths, level, lesson, trial, oracle, terminal, forge, codex, cheatsheet, profile, beyond,
+  '': home, paths, level, lesson, trial, oracle, terminal, forge, codex, cheatsheet, profile, beyond, epic,
 };
 function route() {
   const [, name = '', ...args] = location.hash.replace(/^#/, '').split('/');
@@ -118,16 +138,13 @@ function blob(cx, cy, r, seed) {
   for (let k = 0; k < n; k++) { const m = mid(p[k], p[(k + 1) % n]); d += ` Q${p[k][0].toFixed(1)},${p[k][1].toFixed(1)} ${m[0].toFixed(1)},${m[1].toFixed(1)}`; }
   return `${d} Z`;
 }
-function mapSvg() {
+function mapSvg(voyage = ODYSSEY) {
   const W = 1000; const H = 390;
-  // Hand-placed route: west to east, winding like the voyage; labels above (-1) or below (1).
-  const PTS = [[80, 250, 1], [160, 322, 1], [255, 272, 1], [330, 185, 1], [395, 105, -1], [490, 88, -1], [575, 160, 1],
-    [540, 262, -1], [620, 330, 1], [710, 282, 1], [770, 192, 1], [720, 100, -1], [820, 64, -1], [890, 150, 1], [925, 272, 1]];
-  const SHORT = ['Ithaca', 'Cicones', 'Lotus-Eaters', 'Cyclops', 'Aeolus', 'Laestrygonians', 'Aeaea', 'Underworld',
-    'Sirens', 'Scylla & Charybdis', 'Thrinacia', 'Ogygia', 'Scheria', 'Court of Alcinous', 'Home to Ithaca'];
+  // Hand-placed route: [x, y, label side] per island; labels above (-1) or below (1).
+  const PTS = voyage.map; const SHORT = voyage.short; const LVS = voyage.levels;
   const path = PTS.map(([x, y], i) => (i ? `S${(PTS[i - 1][0] + x) / 2},${y} ${x},${y}` : `M${x},${y}`)).join(' ');
-  const step = nextStep();
-  const islands = LEVELS.map((lv, i) => {
+  const step = nextStep(LVS);
+  const islands = LVS.map((lv, i) => {
     const [x, y, side] = PTS[i];
     const done = trialPassed(lv); const open = unlocked(lv); const current = step && step.lv === lv;
     const fill = done ? 'var(--ochre)' : current ? 'var(--terracotta)' : open ? 'var(--surface)' : 'url(#hatch)';
@@ -145,7 +162,7 @@ function mapSvg() {
     const x1 = Math.cos(a) * L; const y1 = Math.sin(a) * L; const a2 = a + Math.PI / 2;
     return `<path d="M0,0 L${(Math.cos(a2) * 4).toFixed(1)},${(Math.sin(a2) * 4).toFixed(1)} L${x1.toFixed(1)},${y1.toFixed(1)} Z" fill="${k % 2 ? 'var(--line-strong)' : 'var(--terracotta)'}"/>`;
   }).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart of the voyage: fifteen islands">
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart of ${esc(voyage.title)}: ${LVS.length} islands">
     <defs>
       <pattern id="sea" width="64" height="30" patternUnits="userSpaceOnUse"><path d="M2 20 q6 -8 12 0 t12 0 M34 6 q6 -8 12 0 t12 0" fill="none" stroke="var(--line)" stroke-width="1.2" opacity=".75"/></pattern>
       <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--bg-2)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--line)" stroke-width="2"/></pattern>
@@ -156,8 +173,8 @@ function mapSvg() {
     <g transform="translate(26 24)">
       <rect width="232" height="54" fill="var(--surface)" stroke="var(--line-strong)" stroke-width="1.5"/>
       <rect x="4" y="4" width="224" height="46" fill="none" stroke="var(--line)"/>
-      <text x="116" y="27" text-anchor="middle" font-family="Cinzel,serif" font-weight="700" font-size="17" letter-spacing="6" fill="var(--ink)">ΟΔΥΣΣΕΙΑ</text>
-      <text x="116" y="43" text-anchor="middle" font-family="'EB Garamond',serif" font-style="italic" font-size="13" fill="var(--muted)">the wine-dark sea</text>
+      <text x="116" y="27" text-anchor="middle" font-family="Cinzel,serif" font-weight="700" font-size="17" letter-spacing="${voyage.greekTitle.length > 9 ? 3 : 6}" fill="var(--ink)">${voyage.greekTitle}</text>
+      <text x="116" y="43" text-anchor="middle" font-family="'EB Garamond',serif" font-style="italic" font-size="13" fill="var(--muted)">${voyage === ODYSSEY ? 'the wine-dark sea' : esc(voyage.project)}</text>
     </g>
     <g transform="translate(420 322)">${rose}<circle r="4" fill="var(--surface)" stroke="var(--line-strong)"/>
       <text y="-31" text-anchor="middle" font-family="Cinzel,serif" font-size="11" font-weight="700" fill="var(--ink-2)">Β</text></g>
@@ -196,6 +213,8 @@ function home() {
     <div class="steps"><i></i><i></i><i></i></div>
   </section>
   <div class="mapwrap">${mapSvg()}</div>
+  <h2 class="orn"><span>Three epics<small>OpenStack, and the projects that complete it, each learnt from scratch</small></span></h2>
+  <div class="grid cols-3">${VOYAGES.map(epicCard).join('')}</div>
   ${tiers.map((t) => `<h2 class="orn"><span>${t}<small>${tierBlurb[t]}</small></span></h2>
   <div class="levels">${LEVELS.filter((l) => l.tier === t).map(levelCard).join('')}</div>`).join('')}
   <h2 class="orn"><span>The sanctuaries<small>tools for practice and for work</small></span></h2>
@@ -217,6 +236,17 @@ const tierBlurb = {
   Olympian: 'architecture, presales and expert incidents',
 };
 const featureCard = (icon, title, text, href) => `<a class="level-card" href="${href}">${glyph(icon, 46)}<h3>${title}</h3><p class="muted small" style="margin:0">${text}</p></a>`;
+function epicCard(v) {
+  const done = v.levels.filter(trialPassed).length;
+  const lessons = v.levels.reduce((t, l) => t + l.lessons.length, 0);
+  return `<a class="level-card" href="#/epic/${v.id}">${glyph(v.glyph, 46)}
+    <span class="num">${esc(v.project.toUpperCase())} · ${v.levels.length} ISLANDS</span>
+    <h3>${esc(v.title)}</h3>
+    <span class="small muted">${esc(v.tagline)}</span>
+    <div class="progress" style="margin-top:6px"><div style="width:${(done / v.levels.length) * 100}%"></div></div>
+    <span class="small muted">${done}/${v.levels.length} islands · ${lessons} lessons</span>
+  </a>`;
+}
 function levelCard(lv) {
   const open = unlocked(lv); const done = levelDone(lv); const pct = (done / lv.lessons.length) * 100;
   return `<a class="level-card${open ? '' : ' locked'}" href="#/level/${lv.id}">
@@ -230,15 +260,41 @@ function levelCard(lv) {
   </a>`;
 }
 const bookNo = (n) => greek(n);
+const bookLabel = (lv) => (voyageOf(lv) === ODYSSEY ? `Book ${bookNo(lv.n)}` : `${voyageOf(lv).project} · Book ${bookNo(lv.n)}`);
+const voyageCrumb = (lv) => (voyageOf(lv) === ODYSSEY ? '<a href="#/">Voyage</a>' : `<a href="#/epic">Epics</a> › <a href="#/epic/${voyageOf(lv).id}">${esc(voyageOf(lv).title)}</a>`);
+
+// ------------------------------------------------------------------ epics
+function epic(id) {
+  if (!id) {
+    app.innerHTML = `<p class="eyebrow">Three voyages</p><h1>The epics</h1>
+    <p class="lede">The Odyssey teaches OpenStack itself. The side epics teach, from zero, the projects that most OpenStack clouds depend on, and end by joining them to OpenStack. Each epic has its own islands, trials, relics, labs and Oracle trials, and none needs the others first.</p>
+    <div class="grid cols-3" style="margin-top:16px">${VOYAGES.map(epicCard).join('')}</div>`;
+    return;
+  }
+  const v = voyageById(id); if (!v) return notFound();
+  const step = nextStep(v.levels);
+  const labs = [...new Set(v.levels.map((l) => l.lab).filter(Boolean))].map((lid) => LABS.find((l) => l.id === lid)).filter(Boolean);
+  const oracles = [...new Set(v.levels.flatMap((l) => l.oracle || []))].map((o) => SCENARIOS.find((x) => x.id === o)).filter(Boolean);
+  app.innerHTML = `<p class="breadcrumb"><a href="#/epic">Epics</a> › ${esc(v.title)}</p>
+  <p class="eyebrow">${esc(v.project)} · ${v.levels.length} islands · from scratch</p>
+  <h1>${esc(v.title)}</h1>
+  <p class="lede">${esc(v.tagline)}</p>
+  ${v.myth ? `<div class="prose"><div class="callout myth"><b>From the epic</b>${esc(v.myth)}</div></div>` : ''}
+  <div class="row" style="margin:14px 0">${step ? `<a class="btn" href="${step.href}">${v.levels.some((l) => levelDone(l)) ? 'Continue' : 'Begin'}: ${esc(step.ls ? step.ls.title : step.trial ? `Trial of ${step.lv.place}` : step.lv.place)}</a>` : '<span class="pill ok">Epic complete</span>'}
+    ${labs.map((l) => `<a class="pill gold" href="#/terminal/${l.id}">${P.labs[l.id] ? '✓ ' : ''}Lab: ${esc(l.title)}</a>`).join('')}</div>
+  <div class="mapwrap">${mapSvg(v)}</div>
+  <div class="levels">${v.levels.map(levelCard).join('')}</div>
+  ${oracles.length ? `<h2 class="orn"><span>Oracle trials for this epic</span></h2><div class="tags">${oracles.map((o) => `<a class="pill${P.oracle[o.id] ? ' ok' : ''}" href="#/oracle/${o.id}">${P.oracle[o.id] ? '✓ ' : ''}${esc(o.title)}</a>`).join('')}</div>` : ''}`;
+}
 
 // ------------------------------------------------------------------ paths
 const PATHS = {
-  sys: { levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15], oracle: SCENARIOS.map((s) => s.id), tools: ['terminal', 'cheatsheet'], why: 'Operate, fix and upgrade the platform end to end.' },
-  net: { levels: [1, 2, 3, 6, 8, 10, 13, 15], oracle: ['dhcp-silence', 'floating-ip', 'mtu-hang', 'octavia-pending'], tools: ['terminal', 'cheatsheet'], why: 'Master Neutron, OVN, MTU, SR-IOV, BGP and fabric integration.' },
-  pre: { levels: [1, 2, 4, 6, 7, 12, 14], oracle: ['no-valid-host', 'floating-ip'], tools: ['forge', 'codex'], why: 'Explain value credibly, qualify requirements and size solutions.' },
-  sa: { levels: [1, 4, 6, 7, 10, 11, 13, 14], oracle: ['no-valid-host', 'noisy-neighbor', 'live-migration'], tools: ['forge', 'cheatsheet'], why: 'Turn requirements into designs, ADRs and bills of materials.' },
-  pa: { levels: [1, 10, 11, 12, 13, 14, 15], oracle: ['noisy-neighbor', 'rabbit-partition', 'keystone-401'], tools: ['forge', 'codex'], why: 'Set principles, reference architectures and the platform strategy.' },
-  lead: { levels: [1, 8, 9, 10, 12, 15], oracle: ['rabbit-partition', 'keystone-401', 'mtu-hang'], tools: ['oracle', 'forge'], why: 'Build a team that runs the cloud without heroes.' },
+  sys: { levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15], epics: ['argonautica', 'helmsman'], oracle: SCENARIOS.map((s) => s.id), tools: ['terminal', 'cheatsheet'], why: 'Operate, fix and upgrade the platform end to end.' },
+  net: { levels: [1, 2, 3, 6, 8, 10, 13, 15], epics: ['helmsman', 'argonautica'], oracle: ['dhcp-silence', 'floating-ip', 'mtu-hang', 'octavia-pending'], tools: ['terminal', 'cheatsheet'], why: 'Master Neutron, OVN, MTU, SR-IOV, BGP and fabric integration.' },
+  pre: { levels: [1, 2, 4, 6, 7, 12, 14], epics: ['argonautica', 'helmsman'], oracle: ['no-valid-host', 'floating-ip'], tools: ['forge', 'codex'], why: 'Explain value credibly, qualify requirements and size solutions.' },
+  sa: { levels: [1, 4, 6, 7, 10, 11, 13, 14], epics: ['argonautica', 'helmsman'], oracle: ['no-valid-host', 'noisy-neighbor', 'live-migration'], tools: ['forge', 'cheatsheet'], why: 'Turn requirements into designs, ADRs and bills of materials.' },
+  pa: { levels: [1, 10, 11, 12, 13, 14, 15], epics: ['argonautica', 'helmsman'], oracle: ['noisy-neighbor', 'rabbit-partition', 'keystone-401'], tools: ['forge', 'codex'], why: 'Set principles, reference architectures and the platform strategy.' },
+  lead: { levels: [1, 8, 9, 10, 12, 15], epics: ['helmsman', 'argonautica'], oracle: ['rabbit-partition', 'keystone-401', 'mtu-hang'], tools: ['oracle', 'forge'], why: 'Build a team that runs the cloud without heroes.' },
 };
 function paths(sel) {
   const role = [sel, P.role, 'sys'].find((r) => Object.hasOwn(PATHS, r || ''));
@@ -259,6 +315,8 @@ function paths(sel) {
     <div class="levels">${lvls.map(levelCard).join('')}</div>
     <h3>Oracle trials</h3>
     <div class="tags">${p.oracle.map((id) => { const s = SCENARIOS.find((x) => x.id === id); return `<a class="pill${P.oracle[id] ? ' ok' : ''}" href="#/oracle/${id}">${P.oracle[id] ? '✓ ' : ''}${esc(s.title)}</a>`; }).join('')}</div>
+    <h3>Side epics</h3>
+    <div class="tags">${p.epics.map((id) => { const v = voyageById(id); const d = v.levels.filter(trialPassed).length; return `<a class="pill${d === v.levels.length ? ' ok' : ''}" href="#/epic/${id}">${esc(v.title)} (${esc(v.project)}) · ${d}/${v.levels.length}</a>`; }).join('')}</div>
     <h3>Tools</h3>
     <div class="tags">${p.tools.map((t) => `<a class="pill gold" href="#/${t}">${t[0].toUpperCase() + t.slice(1)}</a>`).join('')}</div>
   </div>`;
@@ -272,12 +330,13 @@ function level(id) {
   const labs = LABS.filter((l) => l.id === lv.lab);
   const oracles = (lv.oracle || []).map((o) => SCENARIOS.find((s) => s.id === o)).filter(Boolean);
   app.innerHTML = `
-  <p class="breadcrumb"><a href="#/">Voyage</a> › Book ${bookNo(lv.n)}</p>
-  <p class="eyebrow">Book ${bookNo(lv.n)} · ${esc(lv.place)} · ${esc(lv.tier)}</p>
+  <p class="breadcrumb">${voyageCrumb(lv)} › Book ${bookNo(lv.n)}</p>
+  <p class="eyebrow">${bookLabel(lv)} · ${esc(lv.place)} · ${esc(lv.tier)}</p>
   <h1>${esc(lv.title)}</h1>
   <p class="lede">${esc(lv.subtitle)}</p>
   <div class="prose"><div class="callout myth"><b>From the epic</b>${esc(lv.myth)}</div></div>
-  ${open ? '' : `<div class="callout warn"><b>This island is still shrouded in mist</b>Pass the trial of <a href="#/level/${LEVELS[lv.n - 2].id}">${esc(LEVELS[lv.n - 2].place)}</a> first, or enable <a href="#/profile">free-roam mode</a> if you are an experienced voyager.</div>`}
+  ${open ? '' : `<div class="callout warn"><b>This island is still shrouded in mist</b>Pass the trial of <a href="#/level/${prevOf(lv).id}">${esc(prevOf(lv).place)}</a> first, or enable <a href="#/profile">free-roam mode</a> if you are an experienced voyager.</div>`}
+  ${lv.goals ? `<div class="card" style="margin-top:18px"><h3 style="margin-top:0">By the end of this island you can…</h3><ul class="goals">${lv.goals.map((g) => `<li>${esc(g)}</li>`).join('')}</ul></div>` : ''}
   <div class="grid cols-2" style="margin-top:18px">
     <div class="card">
       <h3 style="margin-top:0">Lessons</h3>
@@ -297,14 +356,14 @@ function level(id) {
     </div>
   </div>
   <div class="row" style="margin-top:22px">
-    ${lv.n > 1 ? `<a class="btn ghost" href="#/level/${LEVELS[lv.n - 2].id}">← ${esc(LEVELS[lv.n - 2].place)}</a>` : ''}<span class="spacer"></span>
-    ${lv.n < LEVELS.length ? `<a class="btn ghost" href="#/level/${LEVELS[lv.n].id}">${esc(LEVELS[lv.n].place)} →</a>` : ''}
+    ${prevOf(lv) ? `<a class="btn ghost" href="#/level/${prevOf(lv).id}">← ${esc(prevOf(lv).place)}</a>` : ''}<span class="spacer"></span>
+    ${nextOf(lv) ? `<a class="btn ghost" href="#/level/${nextOf(lv).id}">${esc(nextOf(lv).place)} →</a>` : ''}
   </div>`;
 }
 
 // ------------------------------------------------------------------ lesson
 function sidebar(lv, currentId) {
-  return `<aside class="sidebar"><h4>Book ${bookNo(lv.n)} · ${esc(lv.place)}</h4><ol>
+  return `<aside class="sidebar"><h4>${bookLabel(lv)} · ${esc(lv.place)}</h4><ol>
     ${lv.lessons.map((ls) => `<li><a href="#/lesson/${lv.id}/${ls.id}" class="${ls.id === currentId ? 'current' : ''}"><span class="tick">${P.lessons[lessonKey(lv, ls)] ? '✓' : '○'}</span>${esc(ls.title)}</a></li>`).join('')}
     <li><a href="#/trial/${lv.id}" class="${currentId === '__trial' ? 'current' : ''}"><span class="tick">${trialPassed(lv) ? '✓' : 'Ω'}</span>Trial of ${esc(lv.place)}</a></li>
     </ol><hr style="margin:10px 0"><a class="small" href="#/level/${lv.id}">Island overview</a> · <a class="small" href="#/cheatsheet">Cheat sheet</a></aside>`;
@@ -315,7 +374,7 @@ function lesson(levelId, lessonId) {
   if (!unlocked(lv)) { location.hash = `#/level/${lv.id}`; return; }
   const idx = lv.lessons.indexOf(ls); const next = lv.lessons[idx + 1];
   const done = !!P.lessons[lessonKey(lv, ls)];
-  app.innerHTML = `<p class="breadcrumb"><a href="#/">Voyage</a> › <a href="#/level/${lv.id}">Book ${bookNo(lv.n)}</a> › Lesson ${idx + 1}</p>
+  app.innerHTML = `<p class="breadcrumb">${voyageCrumb(lv)} › <a href="#/level/${lv.id}">Book ${bookNo(lv.n)}</a> › Lesson ${idx + 1}</p>
   <div class="lesson-layout">${sidebar(lv, ls.id)}
     <article class="prose">
       <p class="eyebrow">Lesson ${idx + 1} of ${lv.lessons.length} · ${ls.minutes} min · +${XP.lesson} XP</p>
@@ -364,7 +423,7 @@ function trial(levelId) {
   if (!unlocked(lv)) { location.hash = `#/level/${lv.id}`; return; }
   const qs = lv.quiz.map((q) => ({ ...q, order: shuffle(q.a.map((_, i) => i)) }));
   let answered = 0; let right = 0;
-  app.innerHTML = `<p class="breadcrumb"><a href="#/">Voyage</a> › <a href="#/level/${lv.id}">Book ${bookNo(lv.n)}</a> › Trial</p>
+  app.innerHTML = `<p class="breadcrumb">${voyageCrumb(lv)} › <a href="#/level/${lv.id}">Book ${bookNo(lv.n)}</a> › Trial</p>
   <div class="lesson-layout">${sidebar(lv, '__trial')}
   <article class="prose">
     <p class="eyebrow">The Trial of ${esc(lv.place)}</p>
@@ -391,11 +450,11 @@ function trial(levelId) {
     P.trials[lv.id] = Math.max(best || 0, pct); persist();
     if (firstPass) award(XP.trial, `Trial passed! The ${lv.relic.name} is yours.`);
     if (firstPerfect) setTimeout(() => award(XP.perfect, 'Flawless trial!'), 1200);
-    const nxt = LEVELS[lv.n];
+    const nxt = nextOf(lv);
     const r = $('[data-result]'); r.hidden = false;
     r.innerHTML = pct >= 70
       ? `<div class="row">${coin(greek(lv.n), true, 72, esc(lv.relic.name))}<h2 style="margin:0">Victory: ${pct}%</h2></div><p>You claimed the <b>${esc(lv.relic.name)}</b>. ${esc(lv.relic.desc)}</p>
-         <div class="row">${nxt ? `<a class="btn gold" href="#/level/${nxt.id}">Sail on to ${esc(nxt.place)} →</a>` : '<a class="btn gold" href="#/profile">You are home. See your relics →</a>'}<button class="btn ghost" data-retry>Retry</button></div>`
+         <div class="row">${nxt ? `<a class="btn gold" href="#/level/${nxt.id}">Sail on to ${esc(nxt.place)} →</a>` : `<a class="btn gold" href="#/profile">${voyageOf(lv) === ODYSSEY ? 'You are home' : `${esc(voyageOf(lv).title)} complete`}. See your relics →</a>`}<button class="btn ghost" data-retry>Retry</button></div>`
       : `<h2 style="margin-top:0">The sea turns you back — ${pct}%</h2><p>You need 70%. Review the explanations above and the lessons, then try again.</p><div class="row"><button class="btn" data-retry>Try again</button><a class="btn ghost" href="#/level/${lv.id}">Review lessons</a></div>`;
     r.querySelector('[data-retry]').addEventListener('click', () => trial(lv.id));
     r.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -456,13 +515,15 @@ let sim;
 function terminal(labId) {
   sim ||= new Simulator();
   const lab = LABS.find((l) => l.id === labId) || LABS.find((l) => !P.labs[l.id]) || LABS[0];
+  const injected = sim.ensureSetup(lab);
+  const promptText = lab.prompt || 'voyager@ithaca:~$';
   app.innerHTML = `<p class="eyebrow">The Helm</p><h1>Terminal labs</h1>
-  <p class="lede">A safe, simulated OpenStack cloud in your browser. Commands, outputs and errors mirror the real <code>openstack</code> client. Type <code>help</code> to begin.</p>
+  <p class="lede">A safe, simulated OpenStack cloud and Ceph cluster in your browser. Commands, outputs and errors mirror the real <code>openstack</code>, <code>ceph</code> and <code>rbd</code> tools. Type <code>help</code> to begin.</p>
   <div class="tags" style="margin:10px 0 16px">${LABS.map((l) => `<a class="pill${l.id === lab.id ? ' tc' : ''}${P.labs[l.id] ? ' ok' : ''}" href="#/terminal/${l.id}">${P.labs[l.id] ? '✓ ' : ''}${esc(l.title)}</a>`).join('')}</div>
   <div class="term-layout">
     <div class="shell" data-shell>
       <div class="shell-out" data-out aria-live="polite"></div>
-      <form class="shell-in" data-form><label for="shell-input">voyager@ithaca:~$</label>
+      <form class="shell-in" data-form><label for="shell-input">${esc(promptText)}</label>
         <input id="shell-input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Command input"></form>
     </div>
     <div class="card">
@@ -475,8 +536,14 @@ function terminal(labId) {
   const out = $('[data-out]'); const input = $('#shell-input');
   const hist = []; let hi = 0;
   const print = (text, cls = '') => { const span = document.createElement('span'); if (cls) span.className = cls; span.textContent = `${text}\n`; out.appendChild(span); out.scrollTop = out.scrollHeight; };
-  print('OpenStack Odyssey simulator — RegionOne · release 2026.1 "Gazpacho"', 'dim');
-  print('Type "help" for commands. Start with:  source argonauts-openrc.sh\n', 'dim');
+  if (lab.intro && lab.id && CEPH_LAB_IDS.has(lab.id)) {
+    print('Ceph Tentacle 20.2.3 · 3 hosts · 9 OSDs · you are inside "cephadm shell" on ceph-01', 'dim');
+    print('Type "ceph --help" or "rbd help". Start with:  ceph -s\n', 'dim');
+    if (injected) print('⚠ Alert: a disk on ceph-02 has just failed. Investigate!\n', 'err');
+  } else {
+    print('OpenStack Odyssey simulator — RegionOne · release 2026.1 "Gazpacho"', 'dim');
+    print('Type "help" for commands. Start with:  source argonauts-openrc.sh\n', 'dim');
+  }
   const goals = () => {
     const el = $('[data-goals]'); if (!el) return;
     const st = lab.goals.map(([t, hint, check]) => ({ t, hint, ok: check(sim.done, sim.s) }));
@@ -488,7 +555,7 @@ function terminal(labId) {
   $('[data-form]').addEventListener('submit', (e) => {
     e.preventDefault();
     const line = input.value; input.value = '';
-    const pr = document.createElement('span'); pr.innerHTML = `<span class="pr">voyager@ithaca:~$ </span><span class="cmd">${esc(line)}</span>\n`; out.appendChild(pr);
+    const pr = document.createElement('span'); pr.innerHTML = `<span class="pr">${esc(promptText)} </span><span class="cmd">${esc(line)}</span>\n`; out.appendChild(pr);
     if (line.trim()) { hist.push(line); hi = hist.length; }
     if (line.trim() === 'clear') { out.textContent = ''; return; }
     if (line.trim() === 'history') { print(hist.map((h, i) => `${String(i + 1).padStart(4)}  ${h}`).join('\n')); return; }
@@ -603,7 +670,7 @@ function beyond(focus) {
       <ul class="sources">${t.links.map(([title, url, kind]) => `<li data-text="${esc(`${t.title} ${title} ${kind} ${t.why}`.toLowerCase())}">
         <span class="kind kind-${kind.toLowerCase()}">${kind}</span> <a href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a></li>`).join('')}</ul>
       <p class="small muted" style="margin:8px 0 0">For: ${t.roles.map((r) => ROLES[r]).join(', ')}.
-        Continue from: ${t.levels.map((id) => { const lv = levelById(id); return `<a href="#/level/${id}">Book ${bookNo(lv.n)}, ${esc(lv.place)}</a>`; }).join(' · ')}</p>
+        Continue from: ${t.levels.map((id) => { const lv = levelById(id); return `<a href="#/level/${id}">${bookLabel(lv)}, ${esc(lv.place)}</a>`; }).join(' · ')}</p>
     </section>`).join('')}</div>`;
   const apply = () => {
     const q = $('[data-search]').value.trim().toLowerCase();
@@ -632,6 +699,7 @@ function profile() {
     ['trident', 'Master Mariner', 'Complete every terminal lab', Object.keys(P.labs).length === LABS.length],
     ['scroll', 'Scholar of Alexandria', 'Learn every lesson', Object.keys(P.lessons).length >= totalLessons],
     ['laurel', 'Flawless Voyager', 'Score 100% on five trials', Object.values(P.trials).filter((x) => x === 100).length >= 5],
+    ...EPICS.map((v) => [v.glyph, v.id === 'argonautica' ? 'Argonaut' : 'Helmsman', `Complete ${v.title}`, v.levels.every(trialPassed)]),
   ];
   app.innerHTML = `<p class="eyebrow">The Hero</p><h1>${esc(P.name || 'Nameless voyager')}</h1>
   <p class="lede">${r.name} · ${P.xp} XP${r.next ? ` · ${r.next - P.xp} XP to ${r.nextName}` : ''}</p>
@@ -650,7 +718,8 @@ function profile() {
     </div>
   </div>
   <h2>Relics of the islands</h2>
-  <div class="badges">${LEVELS.map((lv) => `<div class="badge${trialPassed(lv) ? ' earned' : ''}">${coin(greek(lv.n), trialPassed(lv), 60, esc(lv.relic.name))}<b>${esc(lv.relic.name)}</b><span>${esc(lv.place)}</span></div>`).join('')}</div>
+  ${VOYAGES.map((v) => `<h3>${esc(v.title)} <span class="muted small">· ${esc(v.project)}</span></h3>
+  <div class="badges">${v.levels.map((lv) => `<div class="badge${trialPassed(lv) ? ' earned' : ''}">${coin(greek(lv.n), trialPassed(lv), 60, esc(lv.relic.name))}<b>${esc(lv.relic.name)}</b><span>${esc(lv.place)}</span></div>`).join('')}</div>`).join('')}
   <h2>Honours</h2>
   <div class="badges">${special.map(([i, n, d, ok]) => `<div class="badge${ok ? ' earned' : ''}">${glyph(i, 54)}<b>${n}</b><span>${d}</span></div>`).join('')}</div>`;
   $('#p-name').addEventListener('change', (e) => { P.name = e.target.value.trim(); persist(); toast('Name inscribed.'); });

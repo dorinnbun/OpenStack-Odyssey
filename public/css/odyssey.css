@@ -148,7 +148,7 @@ select, input[type="number"], input[type="text"], input[type="search"], textarea
 .theme-btn { font-size: .72rem; letter-spacing: .12em; font-weight: 700; }
 .theme-btn, .menu-btn { background: transparent; border: 1px solid currentColor; color: inherit; border-radius: 0; padding: 3px 9px; font-family: var(--font-display); }
 .menu-btn { display: none; }
-@media (max-width: 1260px) {
+@media (max-width: 1380px) {
   .menu-btn { display: inline-block; margin-left: auto; }
   .xpbox { margin-left: 0; }
   .xpbar { width: 60px; }
@@ -443,3 +443,13 @@ legend { font-family: var(--font-display); font-weight: 700; font-size: .72rem; 
 .kind-community { background: var(--surface); font-style: italic; }
 .kind-vendor { background: transparent; border-style: dashed; }
 button.pill { cursor: pointer; }
+
+/* Beginner aid: the idea in everyday language */
+.callout.plain { border-left-color: var(--olive); background-color: var(--bg-2); font-size: 1.04rem; }
+.callout.plain > b:first-child { color: var(--olive); }
+:root[data-theme="dark"] .callout.plain > b:first-child { color: #b9c77a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .callout.plain > b:first-child { color: #b9c77a; } }
+/* "By the end of this island you can…" */
+.goals { list-style: none; padding: 0; margin: 6px 0 0; }
+.goals li { padding: 3px 0 3px 22px; position: relative; }
+.goals li::before { content: 'Δ'; position: absolute; left: 0; top: 3px; font-family: var(--font-display); font-weight: 700; color: var(--accent-text); font-size: .8rem; }

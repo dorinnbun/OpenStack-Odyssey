@@ -526,4 +526,238 @@ HEALTH_WARN 3 slow ops, oldest one blocked for 34 sec, osd.12 has slow ops`,
       },
     },
   },
+  // ---------------------------------------------------------------- Ceph
+  {
+    id: 'ceph-nearfull',
+    title: 'The Flood of Deucalion',
+    difficulty: 3,
+    tags: ['Ceph', 'Capacity'],
+    summary: 'Suddenly, new volumes fail and some VMs freeze on write. Ceph reports HEALTH_ERR.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'Monday 09:10. Users report that <code>openstack volume create</code> hangs, and several database VMs have frozen writes. The cluster says:',
+        out: `$ ceph -s
+  cluster:
+    health: HEALTH_ERR
+            1 full osd(s)
+            2 nearfull osd(s)
+            3 pool(s) full
+  data:
+    usage:   212 TiB used, 88 TiB / 300 TiB avail`,
+        choices: [
+          { t: 'The cluster is only 71% used, so this must be a bug. Restart the monitors.', wrong: 'Limits apply per OSD, not to the cluster average. One full OSD is enough to block writes.' },
+          { t: 'Find which OSDs are full and why the data is unevenly spread.', go: 'b' },
+          { t: 'Delete old Glance images to free space immediately.', wrong: 'Deleting at random may not free space on the full OSD, and removing parent images can fail because clones depend on them.' },
+        ],
+      },
+      b: {
+        text: 'Per-OSD usage:',
+        out: `$ ceph osd df tree | sort -k17 -n | tail -4
+ ID  CLASS  WEIGHT   REWEIGHT  SIZE    USE     %USE   VAR   PGS  TYPE NAME
+ 31    hdd  7.27739   1.00000  7.3 TiB 6.2 TiB  85.6  1.21   61      osd.31
+ 44    hdd  7.27739   1.00000  7.3 TiB 6.3 TiB  86.9  1.23   62      osd.44
+ 17    hdd  7.27739   1.00000  7.3 TiB 6.9 TiB  95.1  1.34   71      osd.17
+$ ceph balancer status
+{ "active": false, "mode": "none" }`,
+        choices: [
+          { t: 'The balancer is off, so a few OSDs hold far more PGs than others. Unblock carefully, then rebalance.', go: 'c' },
+          { t: 'Set the full ratio to 0.99 and forget about it.', wrong: 'A small temporary raise can help you act, but leaving it there risks OSDs filling completely, which is very hard to recover from.' },
+        ],
+      },
+      c: {
+        text: 'What is the safest sequence?',
+        choices: [
+          { t: 'Temporarily raise the full ratio slightly (for example 0.96) to let deletes and rebalancing proceed, lower the reweight of osd.17, enable the balancer in upmap mode, then restore the ratio and add capacity.', go: 'd' },
+          { t: 'Mark osd.17 out immediately.', wrong: 'Marking it out moves its data onto OSDs that are already nearfull and can push them over the limit too.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'You run <code>ceph osd set-full-ratio 0.96</code>, <code>ceph osd reweight 17 0.90</code>, <code>ceph balancer mode upmap</code> and <code>ceph balancer on</code>. Writes resume, usage evens out to about 74% per OSD within hours, and you restore the full ratio to 0.95. A new storage node is ordered, and an alert on the <i>fullest</i> OSD at 75% is added.',
+        lesson: 'Ceph blocks writes when any single OSD reaches the full ratio. Keep the balancer on, alert on the fullest OSD, and treat ratio changes as a temporary lifeline, not a fix.',
+      },
+    },
+  },
+  {
+    id: 'ceph-qcow2',
+    title: 'The Slow Birth of Ships',
+    difficulty: 2,
+    tags: ['Ceph', 'Glance', 'Nova'],
+    summary: 'On a new Ceph-backed cloud, VMs take minutes to boot and the vms pool fills far faster than expected.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'The new cloud uses Ceph for Glance and Nova. A 20 GB Ubuntu VM takes 4 minutes in <i>spawning</i>, and the <code>vms</code> pool grows by 20 GB per VM. The design promised boots in seconds using copy-on-write clones. What do you check first?',
+        choices: [
+          { t: 'The format of the Glance images.', go: 'b' },
+          { t: 'Add more OSDs for speed.', wrong: 'More disks will not help if every boot copies a full image instead of cloning it.' },
+          { t: 'Increase Nova’s vif_plugging_timeout.', wrong: 'The time is spent preparing the disk, not waiting for the network.' },
+        ],
+      },
+      b: {
+        text: 'The image details:',
+        out: `$ openstack image show ubuntu-24.04 -c disk_format -c size
+| disk_format | qcow2      |
+| size        | 612368384  |
+$ rbd info vms/7d3e…_disk | grep parent
+(no output: the disk is a full copy, not a clone)`,
+        choices: [
+          { t: 'The images are qcow2. RBD can only clone raw images, so Nova downloads, converts and writes a full copy for every VM.', go: 'c' },
+          { t: 'The image is too small.', wrong: 'Size is not the problem; the format prevents cloning.' },
+        ],
+      },
+      c: {
+        text: 'How do you fix it for new and existing images?',
+        choices: [
+          { t: 'Convert images to raw (qemu-img convert, or Glance image import with conversion), upload them as raw, and check that show_image_direct_url is enabled in Glance.', go: 'd' },
+          { t: 'Switch Nova back to local disks.', wrong: 'That gives up live migration without copying and the other Ceph benefits.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'After re-uploading the images as raw and confirming <code>show_image_direct_url = True</code>, new VMs boot in about 15 seconds and <code>rbd info</code> shows a parent snapshot in the images pool. You add an image-upload check to the golden-image pipeline that rejects qcow2 for this cloud.',
+        lesson: 'With Ceph RBD, Glance images must be raw for copy-on-write clones. qcow2 images silently turn every boot into a full download, conversion and copy.',
+      },
+    },
+  },
+  // ---------------------------------------------------------------- Kubernetes on OpenStack
+  {
+    id: 'k8s-lb-pending',
+    title: 'The Gate That Would Not Open',
+    difficulty: 2,
+    tags: ['Kubernetes', 'Octavia', 'OCCM'],
+    summary: 'A Kubernetes Service of type LoadBalancer stays <pending> forever on an OpenStack cloud.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'A team deploys their shop on a new Kubernetes cluster running on OpenStack. The Service has been <code>&lt;pending&gt;</code> for 20 minutes:',
+        out: `$ kubectl get svc shop
+NAME   TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)
+shop   LoadBalancer   10.96.41.12    <pending>     443:30814/TCP`,
+        choices: [
+          { t: 'Look at the Service’s events.', go: 'b' },
+          { t: 'Delete and recreate the Service.', wrong: 'Recreating hides the error message you need.' },
+          { t: 'Restart CoreDNS.', wrong: 'DNS has nothing to do with creating an external load balancer.' },
+        ],
+      },
+      b: {
+        text: 'The events:',
+        out: `$ kubectl describe svc shop | tail -4
+Events:
+  Type     Reason                  Message
+  Warning  SyncLoadBalancerFailed  Error syncing load balancer: failed to ensure load balancer:
+           error creating loadbalancer: Expected HTTP response code [201 202] ... 403:
+           Quota exceeded for resources: ['loadbalancer']`,
+        choices: [
+          { t: 'The OpenStack project has hit its Octavia load balancer quota. Check usage and quota in that project.', go: 'c' },
+          { t: 'The OCCM credentials are wrong.', wrong: 'Wrong credentials give 401 errors. This is a 403 quota error: authentication worked.' },
+        ],
+      },
+      c: {
+        text: 'The project has 10 load balancers, the quota is 10, and 6 of them belong to clusters that were deleted last month.',
+        out: `$ openstack loadbalancer list --project shop-team -c name -c provisioning_status
+| kube_service_old-cluster_default_web  | ACTIVE |
+| kube_service_old-cluster_default_api  | ACTIVE |
+...`,
+        choices: [
+          { t: 'Clean up the orphaned load balancers from deleted clusters, then fix the process so cluster deletion removes its Services first.', go: 'd' },
+          { t: 'Raise the quota to 100 and move on.', wrong: 'You would keep paying for orphaned load balancers and floating IPs, and hit the new limit later.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'After deleting the 6 orphaned load balancers (and their floating IPs), the Service gets its external IP within two minutes. The team’s cluster-deletion runbook now deletes LoadBalancer Services before deleting the cluster, and a weekly report lists load balancers named <code>kube_service_*</code> whose cluster no longer exists.',
+        lesson: 'A pending LoadBalancer is almost always an OpenStack-side error. Read the Service events and OCCM logs; quotas, credentials and wrong network or subnet IDs are the usual causes.',
+      },
+    },
+  },
+  {
+    id: 'k8s-pvc-pending',
+    title: 'The Stable With No Stalls',
+    difficulty: 3,
+    tags: ['Kubernetes', 'Cinder CSI', 'Availability zones'],
+    summary: 'A database pod is stuck because its volume will not attach, but only in one availability zone.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'A PostgreSQL StatefulSet on a cluster spread across az1 and az2 has one pod stuck in <code>ContainerCreating</code>:',
+        out: `$ kubectl describe pod pg-1 | tail -3
+  Warning  FailedAttachVolume  attachdetach-controller  AttachVolume.Attach failed for volume "pvc-7b1…":
+  rpc error: code = Internal desc = [ControllerPublishVolume] Attach Volume failed with error
+  Invalid input received: Invalid volume: Volume availability zone az1 does not match instance az2 (HTTP 400)`,
+        choices: [
+          { t: 'The volume was created in az1 but the pod was scheduled to a node in az2. Check how the StorageClass binds volumes.', go: 'b' },
+          { t: 'Cinder is down.', wrong: 'Cinder answered with a clear 400 error, so it is up.' },
+        ],
+      },
+      b: {
+        text: 'The StorageClass:',
+        out: `$ kubectl get sc standard -o yaml | grep -E 'provisioner|volumeBindingMode'
+provisioner: cinder.csi.openstack.org
+volumeBindingMode: Immediate`,
+        choices: [
+          { t: 'Immediate binding creates the volume before the pod is scheduled, in whatever AZ the driver picks. Use WaitForFirstConsumer so the volume follows the pod’s node.', go: 'c' },
+          { t: 'Set cross_az_attach = True in Nova.', wrong: 'That may hide the error, but it creates cross-AZ traffic and defeats the purpose of availability zones.' },
+        ],
+      },
+      c: {
+        text: 'The StorageClass is fixed for new volumes. The existing pg-1 volume is still in az1. What now?',
+        choices: [
+          { t: 'For this pod, schedule it to an az1 node (the PV’s node affinity allows it) or restore its data into a new volume in az2 from a snapshot or backup. Then re-test the StatefulSet across both zones.', go: 'd' },
+          { t: 'Delete the PVC and hope.', wrong: 'Deleting the PVC can delete the data. Never do that on a database without a backup.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'With <code>volumeBindingMode: WaitForFirstConsumer</code>, new volumes are created in the zone of the scheduled pod. pg-1 runs again on an az1 node, and the platform’s default StorageClasses are all switched to topology-aware binding.',
+        lesson: 'Cinder volumes live in one availability zone. On multi-AZ clusters, StorageClasses must use WaitForFirstConsumer so volumes are created where their pods run.',
+      },
+    },
+  },
+  {
+    id: 'k8s-mtu',
+    title: 'Two Seas on Top of Each Other',
+    difficulty: 3,
+    tags: ['Kubernetes', 'CNI', 'Neutron', 'MTU'],
+    summary: 'Pods on different nodes can ping each other, but large API responses between them hang.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'On a fresh cluster, health checks pass, but the frontend times out when the backend (on another node) returns big JSON responses. Pods on the same node work fine. Your hypothesis?',
+        choices: [
+          { t: 'Packets larger than the path allows are dropped between nodes: an MTU problem across the two overlays.', go: 'b' },
+          { t: 'The backend is overloaded.', wrong: 'It is fast for pods on the same node; only cross-node large responses fail.' },
+          { t: 'CoreDNS is failing.', wrong: 'Name resolution works, since connections start and small calls succeed.' },
+        ],
+      },
+      b: {
+        text: 'You compare MTUs:',
+        out: `# on a node VM (Neutron network)
+$ ip link show ens3 | grep -o 'mtu [0-9]*'
+mtu 1442
+# inside a pod
+$ kubectl exec frontend-7c9 -- cat /sys/class/net/eth0/mtu
+1450
+$ kubectl -n kube-system get cm calico-config -o yaml | grep -i mtu
+  veth_mtu: "1450"`,
+        choices: [
+          { t: 'The CNI was hard-coded to 1450, but the node network is only 1442 and VXLAN adds 50 bytes. Pod MTU must be at most 1392.', go: 'c' },
+          { t: 'Raise the node MTU to 9000 inside the VM.', wrong: 'The VM cannot send more than its Neutron network allows; the fabric would drop the frames.' },
+        ],
+      },
+      c: {
+        text: 'What is the durable fix?',
+        choices: [
+          { t: 'Set the CNI MTU to 1392 (or let it auto-detect), roll the CNI pods, and ideally raise the underlay to jumbo frames so tenants get more headroom.', go: 'd' },
+          { t: 'Disable the CNI overlay and hope routing works.', wrong: 'Without encapsulation you also need allowed address pairs or BGP. Do that deliberately, not as a quick fix.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'With the CNI MTU at 1392, large responses flow. The cluster template now leaves MTU to auto-detection, and the network team schedules jumbo frames on the tenant underlay.',
+        lesson: 'Kubernetes on OpenStack stacks one overlay on another. Pod MTU = node MTU − CNI overhead. Symptoms are identical to the classic Neutron MTU problem: small works, large hangs.',
+      },
+    },
+  },
 ];

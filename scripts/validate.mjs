@@ -5,13 +5,20 @@ import { LEVELS_3 } from '../public/js/data/levels-3.js';
 import { SCENARIOS } from '../public/js/data/scenarios.js';
 import { LABS } from '../public/js/terminal.js';
 import { LIBRARY } from '../public/js/data/library.js';
+import { EPICS } from '../public/js/data/epics.js';
 import { ROLES } from '../public/js/data/helpers.js';
 
-const LEVELS = [...LEVELS_1, ...LEVELS_2, ...LEVELS_3];
+const MAIN = [...LEVELS_1, ...LEVELS_2, ...LEVELS_3];
+const VOYAGES = [{ id: 'odyssey', levels: MAIN }, ...EPICS];
+const LEVELS = VOYAGES.flatMap((v) => v.levels);
 const errors = [];
 const ids = new Set();
-LEVELS.forEach((lv, i) => {
-  if (lv.n !== i + 1) errors.push(`${lv.id}: n=${lv.n}, expected ${i + 1}`);
+EPICS.forEach((v) => {
+  if (v.map.length !== v.levels.length || v.short.length !== v.levels.length) errors.push(`epic ${v.id}: map/short must have one entry per level`);
+  ['id', 'title', 'greekTitle', 'project', 'glyph', 'tagline'].forEach((k) => { if (!v[k]) errors.push(`epic ${v.id}: missing ${k}`); });
+});
+VOYAGES.forEach((v) => v.levels.forEach((lv, i) => { if (lv.n !== i + 1) errors.push(`${v.id}/${lv.id}: n=${lv.n}, expected ${i + 1}`); }));
+LEVELS.forEach((lv) => {
   if (ids.has(lv.id)) errors.push(`duplicate level id ${lv.id}`); ids.add(lv.id);
   if (!lv.lessons.length) errors.push(`${lv.id}: no lessons`);
   lv.quiz.forEach((q, qi) => { if (!(q.c >= 0 && q.c < q.a.length)) errors.push(`${lv.id} q${qi + 1}: bad answer index`); });
@@ -40,4 +47,4 @@ LIBRARY.forEach((t) => {
   });
 });
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
-console.log(`OK: ${LEVELS.length} levels, ${LEVELS.reduce((t, l) => t + l.lessons.length, 0)} lessons, ${LEVELS.reduce((t, l) => t + l.quiz.length, 0)} questions, ${SCENARIOS.length} oracle trials, ${LABS.length} labs, ${LIBRARY.length} library topics / ${LIBRARY.reduce((t, x) => t + x.links.length, 0)} sources`);
+console.log(`OK: ${VOYAGES.length} voyages, ${LEVELS.length} levels, ${LEVELS.reduce((t, l) => t + l.lessons.length, 0)} lessons, ${LEVELS.reduce((t, l) => t + l.quiz.length, 0)} questions, ${SCENARIOS.length} oracle trials, ${LABS.length} labs, ${LIBRARY.length} library topics / ${LIBRARY.reduce((t, x) => t + x.links.length, 0)} sources`);

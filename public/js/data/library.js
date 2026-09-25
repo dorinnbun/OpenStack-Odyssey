@@ -11,7 +11,7 @@ export const LIBRARY = [
   {
     id: 'kubernetes', glyph: 'helmet', title: 'Kubernetes on OpenStack',
     why: 'Most private clouds now host Kubernetes. Learn how clusters are created on OpenStack (Magnum with Cluster API, or Cluster API directly) and how pods get OpenStack volumes and load balancers.',
-    roles: ['sys', 'sa', 'pa', 'pre'], levels: ['scheria', 'phaeacian-court'],
+    roles: ['sys', 'sa', 'pa', 'pre'], levels: ['scheria', 'phaeacian-court', 'k8s-geryon', 'k8s-hind', 'k8s-augeas'],
     links: [
       ['Magnum user guide', 'https://docs.openstack.org/magnum/latest/user/', 'Official'],
       ['Magnum Cluster API Helm driver', 'https://docs.openstack.org/magnum-capi-helm/latest/user_docs/index.html', 'Official'],
@@ -25,7 +25,7 @@ export const LIBRARY = [
   {
     id: 'backup-dr', glyph: 'amphora', title: 'Backup and disaster recovery',
     why: 'Snapshots live on the same backend as the volume. Real disaster recovery needs backups to a separate store, replication to a second site, and restores that have actually been rehearsed.',
-    roles: ['sys', 'sa', 'pa', 'lead'], levels: ['circe', 'scylla', 'calypso'],
+    roles: ['sys', 'sa', 'pa', 'lead'], levels: ['circe', 'scylla', 'calypso', 'ceph-medea', 'k8s-cerberus'],
     links: [
       ['Cinder replication in OpenStack', 'https://docs.openstack.org/cinder/latest/admin/replication-in-openstack.html', 'Official'],
       ['Cinder volume replication for disaster recovery (Charm guide)', 'https://docs.openstack.org/charm-guide/latest/admin/storage/cinder-replication-dr.html', 'Official'],
@@ -65,7 +65,7 @@ export const LIBRARY = [
   {
     id: 'ai-gpu', glyph: 'lamp', title: 'AI and GPU infrastructure',
     why: 'GPU passthrough, vGPU and MIG, accelerator management, and the RDMA/InfiniBand fabrics that AI training needs.',
-    roles: ['sa', 'pa', 'sys', 'net'], levels: ['cyclops', 'scheria', 'phaeacian-court'],
+    roles: ['sa', 'pa', 'sys', 'net'], levels: ['cyclops', 'scheria', 'phaeacian-court', 'k8s-geryon'],
     links: [
       ['OpenStack for AI white paper', 'https://www.openstack.org/openstack-for-ai-white-paper', 'Foundation'],
       ['Nova: attaching virtual GPUs (vGPU)', 'https://docs.openstack.org/nova/latest/admin/virtual-gpu.html', 'Official'],
@@ -127,7 +127,7 @@ export const LIBRARY = [
   {
     id: 'swift-ironic', glyph: 'amphora', title: 'Object storage and bare metal in depth',
     why: 'How Swift places data with rings and storage policies, and how Ironic provisions physical servers (including standalone with Bifrost).',
-    roles: ['sys', 'sa', 'pa'], levels: ['circe', 'scheria'],
+    roles: ['sys', 'sa', 'pa'], levels: ['circe', 'scheria', 'ceph-colchis'],
     links: [
       ['Swift architectural overview', 'https://docs.openstack.org/swift/latest/overview_architecture.html', 'Official'],
       ['Swift: the rings', 'https://docs.openstack.org/swift/latest/overview_ring.html', 'Official'],

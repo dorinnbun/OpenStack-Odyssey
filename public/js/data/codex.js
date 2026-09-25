@@ -67,6 +67,21 @@ export const GLOSSARY = [
   ['SLURP', 'Skip Level Upgrade Release Process: upgrade .1 → next .1 directly.'],
   ['Trait', 'A qualitative capability of a resource provider (e.g. HW_CPU_X86_AVX2).'],
   ['VIP', 'Virtual IP that moves between controllers (keepalived) in front of HAProxy.'],
+  ['BlueStore', 'Ceph’s storage engine: an OSD writes directly to its raw disk, with a metadata DB and write-ahead log.'],
+  ['cephadm', 'Ceph’s own container-based deployment and management tool (the orchestrator).'],
+  ['cephx', 'Ceph’s authentication: named users (client.cinder…) with keys and capabilities.'],
+  ['CRUSH', 'The algorithm that maps placement groups to OSDs using the hardware hierarchy and rules.'],
+  ['Failure domain', 'The level (host, rack, site) across which copies are spread so one failure never takes all copies.'],
+  ['MON / MGR / OSD', 'Ceph monitors hold the cluster map (quorum); managers run modules and the dashboard; OSDs store data, one per disk.'],
+  ['PG (placement group)', 'A bucket of objects that Ceph places and recovers as a unit.'],
+  ['RBD', 'RADOS Block Device: Ceph virtual disks used by Glance, Cinder and Nova.'],
+  ['RGW', 'RADOS Gateway: Ceph’s S3- and Swift-compatible object storage.'],
+  ['CNI', 'Container Network Interface: the plugin that gives pods their network (Calico, Cilium…).'],
+  ['CSI', 'Container Storage Interface: the plugin that gives pods volumes (Cinder CSI, Manila CSI, Ceph CSI).'],
+  ['Deployment', 'Kubernetes object that keeps a number of identical pods running and rolls out new versions.'],
+  ['OCCM', 'OpenStack cloud controller manager: lets Kubernetes create Octavia load balancers and read node data from OpenStack.'],
+  ['Pod', 'The smallest unit Kubernetes runs: one or more containers sharing an IP address.'],
+  ['PVC', 'PersistentVolumeClaim: a pod’s request for storage, fulfilled by a StorageClass.'],
 ];
 
 export const SOURCES = [
