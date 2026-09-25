@@ -26,6 +26,7 @@ export const K8S_EPIC = {
   title: 'The Labours of the Helmsman',
   greekTitle: 'ΚΥΒΕΡΝΗΤΗΣ',
   project: 'Kubernetes',
+  honour: 'Helmsman',
   glyph: 'helmet',
   tagline: 'Kubernetes from scratch, then running it on OpenStack',
   myth: 'Kubernetes takes its name from the Greek κυβερνήτης: the helmsman. Like Heracles, you earn mastery through labours, from a first container to production clusters that use OpenStack for their load balancers, disks and users.',

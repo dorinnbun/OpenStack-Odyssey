@@ -82,6 +82,18 @@ export const GLOSSARY = [
   ['OCCM', 'OpenStack cloud controller manager: lets Kubernetes create Octavia load balancers and read node data from OpenStack.'],
   ['Pod', 'The smallest unit Kubernetes runs: one or more containers sharing an IP address.'],
   ['PVC', 'PersistentVolumeClaim: a pod’s request for storage, fulfilled by a StorageClass.'],
+  ['Northbound / Southbound DB', 'OVN’s two databases: Northbound holds the logical intent from Neutron; Southbound holds logical flows and which chassis hosts what.'],
+  ['ovn-northd', 'Translates the Northbound DB into logical flows in the Southbound DB.'],
+  ['ovn-controller', 'Agent on each chassis: reads the Southbound DB, claims local ports and programs Open vSwitch.'],
+  ['Logical flow', 'A match/action rule in an OVN pipeline stage (port security, ACL, routing, NAT…), shown by ovn-trace.'],
+  ['Port group', 'OVN object grouping ports; Neutron security groups become port groups with ACLs.'],
+  ['Localnet port', 'Connects an OVN logical switch to a physical network (provider networks).'],
+  ['Exporter', 'A small program exposing metrics at /metrics for Prometheus to scrape.'],
+  ['PromQL', 'Prometheus’s query language: select series by labels, apply rate, sum by, predict_linear…'],
+  ['Alertmanager', 'Receives alerts from Prometheus and groups, inhibits, silences and routes them to people.'],
+  ['SLO', 'Service level objective: a target for a user-facing measurement (e.g. 99.5% of VM builds succeed).'],
+  ['Cardinality', 'The number of distinct time series; labels with ever-changing values make it explode.'],
+  ['Inhibition', 'Alertmanager rule that hides consequence alerts while their cause alert is firing.'],
 ];
 
 export const SOURCES = [

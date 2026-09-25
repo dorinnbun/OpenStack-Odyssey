@@ -6,7 +6,6 @@ import { SERVICES, LOGMAP, GLOSSARY, SOURCES } from './data/codex.js';
 import { CHEAT, PORTS, STATES, CONFIG, SYMPTOMS } from './data/cheatsheet.js';
 import { esc, ROLES, doc } from './data/helpers.js';
 import { Simulator, LABS, COMPLETIONS, clearSimulatorStorage } from './terminal.js';
-import { CEPH_LABS } from './ceph-sim.js';
 import { LIBRARY } from './data/library.js';
 import { EPICS } from './data/epics.js';
 import { renderForge } from './forge.js';
@@ -30,7 +29,6 @@ const voyageOf = (lv) => VOYAGE_OF.get(lv.id);
 const prevOf = (lv) => voyageOf(lv).levels[lv.n - 2];
 const nextOf = (lv) => voyageOf(lv).levels[lv.n];
 const voyageById = (id) => VOYAGES.find((v) => v.id === id);
-const CEPH_LAB_IDS = new Set(CEPH_LABS.map((l) => l.id));
 const $ = (sel, el = document) => el.querySelector(sel);
 const app = $('#app');
 
@@ -176,7 +174,7 @@ function mapSvg(voyage = ODYSSEY) {
       <text x="116" y="27" text-anchor="middle" font-family="Cinzel,serif" font-weight="700" font-size="17" letter-spacing="${voyage.greekTitle.length > 9 ? 3 : 6}" fill="var(--ink)">${voyage.greekTitle}</text>
       <text x="116" y="43" text-anchor="middle" font-family="'EB Garamond',serif" font-style="italic" font-size="13" fill="var(--muted)">${voyage === ODYSSEY ? 'the wine-dark sea' : esc(voyage.project)}</text>
     </g>
-    <g transform="translate(420 322)">${rose}<circle r="4" fill="var(--surface)" stroke="var(--line-strong)"/>
+    <g transform="translate(${(voyage.rose || [420, 322]).join(' ')})">${rose}<circle r="4" fill="var(--surface)" stroke="var(--line-strong)"/>
       <text y="-31" text-anchor="middle" font-family="Cinzel,serif" font-size="11" font-weight="700" fill="var(--ink-2)">Β</text></g>
     <path d="${path}" fill="none" stroke="var(--figure)" stroke-width="2.4" stroke-dasharray="1 7" stroke-linecap="round" opacity=".8"/>
     ${islands}
@@ -213,7 +211,7 @@ function home() {
     <div class="steps"><i></i><i></i><i></i></div>
   </section>
   <div class="mapwrap">${mapSvg()}</div>
-  <h2 class="orn"><span>Three epics<small>OpenStack, and the projects that complete it, each learnt from scratch</small></span></h2>
+  <h2 class="orn"><span>${VOYAGES.length} epics<small>OpenStack, and the projects that complete it, each learnt from scratch</small></span></h2>
   <div class="grid cols-3">${VOYAGES.map(epicCard).join('')}</div>
   ${tiers.map((t) => `<h2 class="orn"><span>${t}<small>${tierBlurb[t]}</small></span></h2>
   <div class="levels">${LEVELS.filter((l) => l.tier === t).map(levelCard).join('')}</div>`).join('')}
@@ -266,7 +264,7 @@ const voyageCrumb = (lv) => (voyageOf(lv) === ODYSSEY ? '<a href="#/">Voyage</a>
 // ------------------------------------------------------------------ epics
 function epic(id) {
   if (!id) {
-    app.innerHTML = `<p class="eyebrow">Three voyages</p><h1>The epics</h1>
+    app.innerHTML = `<p class="eyebrow">${VOYAGES.length} voyages</p><h1>The epics</h1>
     <p class="lede">The Odyssey teaches OpenStack itself. The side epics teach, from zero, the projects that most OpenStack clouds depend on, and end by joining them to OpenStack. Each epic has its own islands, trials, relics, labs and Oracle trials, and none needs the others first.</p>
     <div class="grid cols-3" style="margin-top:16px">${VOYAGES.map(epicCard).join('')}</div>`;
     return;
@@ -289,12 +287,12 @@ function epic(id) {
 
 // ------------------------------------------------------------------ paths
 const PATHS = {
-  sys: { levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15], epics: ['argonautica', 'helmsman'], oracle: SCENARIOS.map((s) => s.id), tools: ['terminal', 'cheatsheet'], why: 'Operate, fix and upgrade the platform end to end.' },
-  net: { levels: [1, 2, 3, 6, 8, 10, 13, 15], epics: ['helmsman', 'argonautica'], oracle: ['dhcp-silence', 'floating-ip', 'mtu-hang', 'octavia-pending'], tools: ['terminal', 'cheatsheet'], why: 'Master Neutron, OVN, MTU, SR-IOV, BGP and fabric integration.' },
-  pre: { levels: [1, 2, 4, 6, 7, 12, 14], epics: ['argonautica', 'helmsman'], oracle: ['no-valid-host', 'floating-ip'], tools: ['forge', 'codex'], why: 'Explain value credibly, qualify requirements and size solutions.' },
-  sa: { levels: [1, 4, 6, 7, 10, 11, 13, 14], epics: ['argonautica', 'helmsman'], oracle: ['no-valid-host', 'noisy-neighbor', 'live-migration'], tools: ['forge', 'cheatsheet'], why: 'Turn requirements into designs, ADRs and bills of materials.' },
-  pa: { levels: [1, 10, 11, 12, 13, 14, 15], epics: ['argonautica', 'helmsman'], oracle: ['noisy-neighbor', 'rabbit-partition', 'keystone-401'], tools: ['forge', 'codex'], why: 'Set principles, reference architectures and the platform strategy.' },
-  lead: { levels: [1, 8, 9, 10, 12, 15], epics: ['helmsman', 'argonautica'], oracle: ['rabbit-partition', 'keystone-401', 'mtu-hang'], tools: ['oracle', 'forge'], why: 'Build a team that runs the cloud without heroes.' },
+  sys: { levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15], epics: ['argonautica', 'labyrinth', 'argus', 'helmsman'], oracle: SCENARIOS.map((s) => s.id), tools: ['terminal', 'cheatsheet'], why: 'Operate, fix and upgrade the platform end to end.' },
+  net: { levels: [1, 2, 3, 6, 8, 10, 13, 15], epics: ['labyrinth', 'helmsman', 'argus'], oracle: ['dhcp-silence', 'floating-ip', 'mtu-hang', 'octavia-pending'], tools: ['terminal', 'cheatsheet'], why: 'Master Neutron, OVN, MTU, SR-IOV, BGP and fabric integration.' },
+  pre: { levels: [1, 2, 4, 6, 7, 12, 14], epics: ['argonautica', 'helmsman', 'argus'], oracle: ['no-valid-host', 'floating-ip'], tools: ['forge', 'codex'], why: 'Explain value credibly, qualify requirements and size solutions.' },
+  sa: { levels: [1, 4, 6, 7, 10, 11, 13, 14], epics: ['argonautica', 'labyrinth', 'helmsman', 'argus'], oracle: ['no-valid-host', 'noisy-neighbor', 'live-migration'], tools: ['forge', 'cheatsheet'], why: 'Turn requirements into designs, ADRs and bills of materials.' },
+  pa: { levels: [1, 10, 11, 12, 13, 14, 15], epics: ['argonautica', 'labyrinth', 'helmsman', 'argus'], oracle: ['noisy-neighbor', 'rabbit-partition', 'keystone-401'], tools: ['forge', 'codex'], why: 'Set principles, reference architectures and the platform strategy.' },
+  lead: { levels: [1, 8, 9, 10, 12, 15], epics: ['argus', 'helmsman', 'argonautica', 'labyrinth'], oracle: ['rabbit-partition', 'keystone-401', 'mtu-hang'], tools: ['oracle', 'forge'], why: 'Build a team that runs the cloud without heroes.' },
 };
 function paths(sel) {
   const role = [sel, P.role, 'sys'].find((r) => Object.hasOwn(PATHS, r || ''));
@@ -516,14 +514,14 @@ function terminal(labId) {
   sim ||= new Simulator();
   const lab = LABS.find((l) => l.id === labId) || LABS.find((l) => !P.labs[l.id]) || LABS[0];
   const injected = sim.ensureSetup(lab);
-  const promptText = lab.prompt || 'voyager@ithaca:~$';
+  const promptText = () => sim.promptFor(lab);
   app.innerHTML = `<p class="eyebrow">The Helm</p><h1>Terminal labs</h1>
-  <p class="lede">A safe, simulated OpenStack cloud and Ceph cluster in your browser. Commands, outputs and errors mirror the real <code>openstack</code>, <code>ceph</code> and <code>rbd</code> tools. Type <code>help</code> to begin.</p>
+  <p class="lede">A safe, simulated cloud in your browser: OpenStack, Ceph, OVN and monitoring. Commands, outputs and errors mirror the real <code>openstack</code>, <code>ceph</code>, <code>ovn-trace</code>, <code>ovs-vsctl</code>, PromQL and <code>amtool</code> tools. Type <code>help</code> to begin.</p>
   <div class="tags" style="margin:10px 0 16px">${LABS.map((l) => `<a class="pill${l.id === lab.id ? ' tc' : ''}${P.labs[l.id] ? ' ok' : ''}" href="#/terminal/${l.id}">${P.labs[l.id] ? '✓ ' : ''}${esc(l.title)}</a>`).join('')}</div>
   <div class="term-layout">
     <div class="shell" data-shell>
       <div class="shell-out" data-out aria-live="polite"></div>
-      <form class="shell-in" data-form><label for="shell-input">${esc(promptText)}</label>
+      <form class="shell-in" data-form><label for="shell-input" data-prompt>${esc(promptText())}</label>
         <input id="shell-input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Command input"></form>
     </div>
     <div class="card">
@@ -536,10 +534,9 @@ function terminal(labId) {
   const out = $('[data-out]'); const input = $('#shell-input');
   const hist = []; let hi = 0;
   const print = (text, cls = '') => { const span = document.createElement('span'); if (cls) span.className = cls; span.textContent = `${text}\n`; out.appendChild(span); out.scrollTop = out.scrollHeight; };
-  if (lab.intro && lab.id && CEPH_LAB_IDS.has(lab.id)) {
-    print('Ceph Tentacle 20.2.3 · 3 hosts · 9 OSDs · you are inside "cephadm shell" on ceph-01', 'dim');
-    print('Type "ceph --help" or "rbd help". Start with:  ceph -s\n', 'dim');
-    if (injected) print('⚠ Alert: a disk on ceph-02 has just failed. Investigate!\n', 'err');
+  if (lab.banner) {
+    lab.banner.forEach((l, i) => print(i === lab.banner.length - 1 ? `${l}\n` : l, 'dim'));
+    if (injected && lab.alert) print(`${lab.alert}\n`, 'err');
   } else {
     print('OpenStack Odyssey simulator — RegionOne · release 2026.1 "Gazpacho"', 'dim');
     print('Type "help" for commands. Start with:  source argonauts-openrc.sh\n', 'dim');
@@ -555,12 +552,13 @@ function terminal(labId) {
   $('[data-form]').addEventListener('submit', (e) => {
     e.preventDefault();
     const line = input.value; input.value = '';
-    const pr = document.createElement('span'); pr.innerHTML = `<span class="pr">${esc(promptText)} </span><span class="cmd">${esc(line)}</span>\n`; out.appendChild(pr);
+    const pr = document.createElement('span'); pr.innerHTML = `<span class="pr">${esc(promptText())} </span><span class="cmd">${esc(line)}</span>\n`; out.appendChild(pr);
     if (line.trim()) { hist.push(line); hi = hist.length; }
     if (line.trim() === 'clear') { out.textContent = ''; return; }
     if (line.trim() === 'history') { print(hist.map((h, i) => `${String(i + 1).padStart(4)}  ${h}`).join('\n')); return; }
     const r = sim.exec(line);
     if (r.out) print(r.out, r.cls || '');
+    $('[data-prompt]').textContent = promptText();
     goals();
   });
   input.addEventListener('keydown', (e) => {
@@ -699,7 +697,7 @@ function profile() {
     ['trident', 'Master Mariner', 'Complete every terminal lab', Object.keys(P.labs).length === LABS.length],
     ['scroll', 'Scholar of Alexandria', 'Learn every lesson', Object.keys(P.lessons).length >= totalLessons],
     ['laurel', 'Flawless Voyager', 'Score 100% on five trials', Object.values(P.trials).filter((x) => x === 100).length >= 5],
-    ...EPICS.map((v) => [v.glyph, v.id === 'argonautica' ? 'Argonaut' : 'Helmsman', `Complete ${v.title}`, v.levels.every(trialPassed)]),
+    ...EPICS.map((v) => [v.glyph, v.honour, `Complete ${v.title}`, v.levels.every(trialPassed)]),
   ];
   app.innerHTML = `<p class="eyebrow">The Hero</p><h1>${esc(P.name || 'Nameless voyager')}</h1>
   <p class="lede">${r.name} · ${P.xp} XP${r.next ? ` · ${r.next - P.xp} XP to ${r.nextName}` : ''}</p>

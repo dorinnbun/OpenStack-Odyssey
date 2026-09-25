@@ -15,7 +15,7 @@ const errors = [];
 const ids = new Set();
 EPICS.forEach((v) => {
   if (v.map.length !== v.levels.length || v.short.length !== v.levels.length) errors.push(`epic ${v.id}: map/short must have one entry per level`);
-  ['id', 'title', 'greekTitle', 'project', 'glyph', 'tagline'].forEach((k) => { if (!v[k]) errors.push(`epic ${v.id}: missing ${k}`); });
+  ['id', 'title', 'greekTitle', 'project', 'honour', 'glyph', 'tagline'].forEach((k) => { if (!v[k]) errors.push(`epic ${v.id}: missing ${k}`); });
 });
 VOYAGES.forEach((v) => v.levels.forEach((lv, i) => { if (lv.n !== i + 1) errors.push(`${v.id}/${lv.id}: n=${lv.n}, expected ${i + 1}`); }));
 LEVELS.forEach((lv) => {

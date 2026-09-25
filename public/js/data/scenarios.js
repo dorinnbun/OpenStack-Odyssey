@@ -760,4 +760,227 @@ $ kubectl -n kube-system get cm calico-config -o yaml | grep -i mtu
       },
     },
   },
+  // ---------------------------------------------------------------- OVN
+  {
+    id: 'ovn-gateway',
+    title: 'The Gate with No Keeper',
+    difficulty: 3,
+    tags: ['OVN', 'Neutron', 'Gateways'],
+    summary: 'After adding three new gateway nodes, some routers lose outbound internet while floating IPs keep working.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'The network team added gw-04, gw-05 and gw-06 and removed two old gateways. Since then, VMs <b>without</b> floating IPs on some projects cannot reach the internet. VMs <b>with</b> floating IPs are fine. Where does outbound traffic without a floating IP leave the cloud?',
+        choices: [
+          { t: 'Through SNAT on the router’s gateway port, which is scheduled on a gateway chassis.', go: 'b' },
+          { t: 'Directly from each compute node.', wrong: 'That is how distributed floating IPs work. Plain SNAT is centralised on a gateway chassis.' },
+          { t: 'Through the metadata agent.', wrong: 'Metadata only serves 169.254.169.254 inside the cloud.' },
+        ],
+      },
+      b: {
+        text: 'You check where an affected router’s gateway port now lives:',
+        out: `$ ovn-nbctl lrp-get-gateway-chassis lrp-4a1c…
+lrp-4a1c…_gw-05    3
+lrp-4a1c…_gw-04    2
+lrp-4a1c…_gw-06    1
+$ ovn-sbctl find Port_Binding logical_port=cr-lrp-4a1c… | grep chassis
+chassis             : 7e2d… (gw-05)`,
+        choices: [
+          { t: 'The port is active on gw-05. Compare gw-05’s OVS configuration with a working gateway.', go: 'c' },
+          { t: 'Delete and recreate the router.', wrong: 'Destructive, and it hides the cause, which is almost certainly on the new nodes.' },
+        ],
+      },
+      c: {
+        text: 'On gw-05 and on an old, working gateway:',
+        out: `[gw-05]$ ovs-vsctl get open . external-ids
+{hostname=gw-05, ovn-cms-options=enable-chassis-as-gw, ovn-encap-ip="10.0.1.45", ovn-encap-type=geneve, ovn-remote="ssl:10.0.0.11:6642,…"}
+[gw-02]$ ovs-vsctl get open . external-ids
+{hostname=gw-02, ovn-bridge-mappings="physnet1:br-ex", ovn-cms-options=enable-chassis-as-gw, …}`,
+        choices: [
+          { t: 'gw-05 has no ovn-bridge-mappings, so it can host gateway ports but has no path to the external network. Add physnet1:br-ex (with br-ex attached to the external NIC).', go: 'd' },
+          { t: 'The encap IP is wrong.', wrong: 'Tunnels are fine: traffic reaches gw-05. It just cannot leave towards the external network.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'The new gateways were deployed with a host-vars file that missed the external interface, so no <code>br-ex</code> and no bridge mapping existed. After redeploying them with the right interface, <code>ovn-bridge-mappings=physnet1:br-ex</code> appears and SNAT works again. You add a post-deploy check: every chassis with <code>enable-chassis-as-gw</code> must have a bridge mapping for the external physnet.',
+        lesson: 'A gateway chassis needs two things: enable-chassis-as-gw and a bridge mapping to the external network. With only the first, OVN happily schedules routers there that have nowhere to send traffic.',
+      },
+    },
+  },
+  {
+    id: 'ovn-raft',
+    title: 'The Palace without a King',
+    difficulty: 4,
+    tags: ['OVN', 'RAFT', 'Neutron'],
+    summary: 'Port creation fails across the cloud with timeouts after one controller was rebuilt.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'ctl-03 was reinstalled and redeployed this morning. Now new VMs fail at network setup, and neutron-server logs are full of timeouts talking to the OVN Northbound database. Existing VMs still pass traffic. First step?',
+        choices: [
+          { t: 'Check the RAFT status of the Northbound cluster on each controller.', go: 'b' },
+          { t: 'Restart ovn-controller on every compute node.', wrong: 'Existing traffic works, so the data plane is fine; the problem is where Neutron writes, the NB database.' },
+        ],
+      },
+      b: {
+        text: 'Cluster status on ctl-01 and ctl-03:',
+        out: `[ctl-01]$ ovn-appctl -t /var/run/ovn/ovnnb_db.ctl cluster/status OVN_Northbound | grep -E 'Role|Leader|Servers' -A3
+Role: candidate
+Leader: unknown
+Servers:
+    3c2b (3c2b at tcp:10.0.0.11:6643) (self)
+    9d10 (9d10 at tcp:10.0.0.12:6643) last msg 1830 ms ago
+    e47a (e47a at tcp:10.0.0.13:6643) last msg 5 h ago
+[ctl-03]$ ovn-appctl -t /var/run/ovn/ovnnb_db.ctl cluster/status OVN_Northbound | grep -E 'Cluster ID|Role'
+Cluster ID: 51f0 (51f0…)
+Role: leader`,
+        choices: [
+          { t: 'ctl-03 bootstrapped a brand-new single-member cluster (different Cluster ID) instead of rejoining. The original cluster lost a member and is struggling to elect a leader.', go: 'c' },
+          { t: 'Everything is fine: ctl-03 is the leader.', wrong: 'ctl-03 leads a different cluster (another Cluster ID). The real cluster has no leader.' },
+        ],
+      },
+      c: {
+        text: 'What is the safe recovery?',
+        choices: [
+          { t: 'Stop the NB database on ctl-03, remove its stray database file, and rejoin it to the existing cluster (join-cluster via the deployment tool). Once the original cluster has a leader, verify with neutron-ovn-db-sync-util in log mode.', go: 'd' },
+          { t: 'Make ctl-03’s new cluster the real one and point everything at it.', wrong: 'Its database is empty: you would lose every logical switch, router and port.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'After ctl-03 rejoins the original cluster (same Cluster ID, three members), a leader is elected within seconds, neutron-server stops timing out, and the sync tool reports no differences. The controller-rebuild runbook now says: restore or rejoin OVN databases, never bootstrap a new cluster on a replaced controller.',
+        lesson: 'A rebuilt controller must rejoin the existing RAFT clusters. Check Cluster ID, Role and Leader with cluster/status on every member; two different Cluster IDs mean a split you must repair before anything else.',
+      },
+    },
+  },
+  // ---------------------------------------------------------------- Monitoring
+  {
+    id: 'alert-storm',
+    title: 'The Storm of Beacons',
+    difficulty: 2,
+    tags: ['Monitoring', 'Alertmanager'],
+    summary: 'One top-of-rack switch fails and the on-call engineer receives 412 pages in five minutes.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: '03:12. A top-of-rack switch in rack B dies. 18 hosts go dark. The on-call phone receives 412 separate pages: NodeDown, NovaComputeDown, OVNControllerDown, CephOSDDown, HighLatency… The engineer misses the one about the switch itself. What went wrong?',
+        choices: [
+          { t: 'Alerts are not grouped, and nothing suppresses consequences when their cause is already alerting.', go: 'b' },
+          { t: 'Too few alert rules.', wrong: 'The problem is too many notifications for one failure, not too few rules.' },
+          { t: 'The switch should have been monitored by Grafana.', wrong: 'Grafana shows data; the routing of pages is Alertmanager’s job.' },
+        ],
+      },
+      b: {
+        text: 'The current Alertmanager route:',
+        out: `route:
+  receiver: pager
+  group_by: ['...']        # every alert is its own group
+  group_wait: 0s
+  repeat_interval: 5m
+inhibit_rules: []`,
+        choices: [
+          { t: 'Group by alertname and rack or cluster, add a short group_wait, and add inhibition rules: when a switch or host is down, suppress alerts from what sits behind it.', go: 'c' },
+          { t: 'Disable paging at night.', wrong: 'Then the switch failure itself would not wake anyone.' },
+        ],
+      },
+      c: {
+        text: 'Which inhibition makes sense here?',
+        choices: [
+          { t: 'Source SwitchDown (or NodeDown) inhibits warning and critical alerts with the same rack (or instance) label.', go: 'd' },
+          { t: 'Inhibit everything whenever any alert fires.', wrong: 'That would hide unrelated failures happening at the same time.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'With <code>group_by: [alertname, rack]</code>, <code>group_wait: 30s</code> and inhibition on the rack label, the same failure now produces one SwitchDown page plus one grouped summary. You also add the rack label to every target through relabelling, and review pages per incident monthly.',
+        lesson: 'Alert fatigue hides the root cause. Group related alerts, inhibit consequences when their cause is alerting, and label targets with their failure domain (rack, AZ) so rules can use it.',
+      },
+    },
+  },
+  {
+    id: 'silent-watch',
+    title: 'When Argus Closed His Eyes',
+    difficulty: 3,
+    tags: ['Monitoring', 'Prometheus'],
+    summary: 'A compute node was down for 9 hours and no alert fired, although the NovaComputeDown rule exists.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'Customers report their VMs on cmp-12 were unreachable all night. The rule <code>NovaComputeDown</code> exists and was tested last month. Nobody was paged. Where do you start?',
+        choices: [
+          { t: 'Check whether Prometheus actually had the data the rule needs.', go: 'b' },
+          { t: 'Blame the on-call engineer.', wrong: 'Blameless reviews find system causes; and here nobody was paged at all.' },
+        ],
+      },
+      b: {
+        text: 'In Prometheus:',
+        out: `> up{job="openstack-exporter"}
+(no data)
+> openstack_nova_agent_state{hostname="cmp-12"}
+(no data for the last 9h)
+> ALERTS{alertname="NovaComputeDown"}
+(no data)`,
+        choices: [
+          { t: 'The openstack-exporter target disappeared, so the metric vanished. A rule of the form “== 0” returns nothing when there is no data, so it never fired.', go: 'c' },
+          { t: 'The rule’s threshold is wrong.', wrong: 'The rule never had any data to compare. Missing data is the problem.' },
+        ],
+      },
+      c: {
+        text: 'The exporter had been moved to a new controller during maintenance, and its scrape target was never updated. How do you make sure silence can never again look like health?',
+        choices: [
+          { t: 'Alert on up == 0 and on absent() for every critical job, keep an always-firing Watchdog alert sent to an external dead-man’s switch, and generate scrape targets from the inventory.', go: 'd' },
+          { t: 'Lower the rule’s “for” duration.', wrong: 'A shorter wait does not help when there is no data at all.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'You add <code>absent(up{job="openstack-exporter"})</code> and <code>up == 0</code> alerts, connect the Watchdog alert to an external heartbeat service that pages if it stops, and generate Prometheus targets from the same inventory as the deployment. A game day confirms that stopping the exporter now pages within 5 minutes.',
+        lesson: 'Alert rules only see data that exists. Watch the watchers: alert on failed scrapes and absent series, and use a dead-man’s switch so a dead monitoring pipeline is itself an alarm.',
+      },
+    },
+  },
+  {
+    id: 'prom-cardinality',
+    title: 'The Hydra of Labels',
+    difficulty: 4,
+    tags: ['Monitoring', 'Prometheus', 'Scale'],
+    summary: 'Prometheus restarts every few hours, killed for running out of memory.',
+    start: 'a',
+    nodes: {
+      a: {
+        text: 'Since last week, Prometheus on the monitoring node is killed by the out-of-memory killer every few hours, leaving gaps in every graph. Nothing changed in Prometheus itself. What do you check first?',
+        choices: [
+          { t: 'How many time series Prometheus holds, and which metrics grew.', go: 'b' },
+          { t: 'Add RAM and move on.', wrong: 'If series keep multiplying, any amount of RAM runs out. Find the growth first.' },
+        ],
+      },
+      b: {
+        text: 'The head series count and the biggest metrics (from the TSDB status page and a query):',
+        out: `> prometheus_tsdb_head_series
+4.2e+06            # one week ago: 0.9e+06
+> topk(3, count by (__name__) ({__name__=~".+"}))
+libvirt_domain_block_stats_read_bytes_total{…}   1.1e+06
+libvirt_domain_interface_stats_receive_bytes_total{…}   0.9e+06
+node_cpu_seconds_total{…}   0.04e+06`,
+        choices: [
+          { t: 'The libvirt exporter now emits one series per VM disk and interface with a label that changes often. Check its labels.', go: 'c' },
+          { t: 'node_cpu_seconds_total is the culprit.', wrong: 'It is small and stable. The libvirt metrics exploded.' },
+        ],
+      },
+      c: {
+        text: 'A label sample:',
+        out: `libvirt_domain_block_stats_read_bytes_total{domain="instance-0003a1f2", instance_name="web-7f3c9b", instance_id="…", project_name="…", target_device="vda", request_id="req-9e1c…"}`,
+        choices: [
+          { t: 'A new exporter version added labels such as request_id that change constantly, creating new series all the time. Drop or rewrite those labels with metric_relabel_configs, and keep only what dashboards use.', go: 'd' },
+          { t: 'Delete all libvirt metrics forever.', wrong: 'You would lose valuable per-VM visibility. Remove the harmful labels instead.' },
+        ],
+      },
+      d: {
+        end: true,
+        text: 'A <code>metric_relabel_configs</code> rule drops the <code>request_id</code> label (and a few unused ones). Head series fall back to about 1 million, memory is stable, and you add an alert on sudden growth of <code>prometheus_tsdb_head_series</code>, plus a review step for exporter upgrades.',
+        lesson: 'Every unique label combination is a separate series. Labels with ever-changing values (IDs, request IDs, timestamps) explode cardinality and memory. Watch head series and relabel away what you do not need.',
+      },
+    },
+  },
 ];

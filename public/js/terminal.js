@@ -3,6 +3,8 @@
 // real workflows and real failure modes.
 
 import { initialCeph, cephExec, CEPH_LABS, CEPH_COMPLETIONS } from './ceph-sim.js';
+import { initialOvn, ovnExec, isOvnHost, OVN_LABS, OVN_COMPLETIONS, OVN_HELP } from './ovn-sim.js';
+import { initialObs, argusExec, ARGUS_LABS, ARGUS_COMPLETIONS, ARGUS_HELP } from './argus-sim.js';
 
 const STORE_KEY = 'odyssey.sim.v1';
 
@@ -60,6 +62,8 @@ function initialState() {
 // public subnet created lazily so ids are stable
 function seed(s) {
   if (!s.ceph) s.ceph = initialCeph();
+  if (!s.ovn) s.ovn = initialOvn();
+  if (!s.obs) s.obs = initialObs();
   if (!s.labSetup) s.labSetup = {};
   if (!s.subnets.find((x) => x.name === 'public-subnet')) {
     const pub = s.networks.find((n) => n.name === 'public');
@@ -130,6 +134,11 @@ export class Simulator {
   }
   reset() { this.s = seed(initialState()); this.done = new Set(); this.save(); }
   mark(e) { this.done.add(e); }
+  /** The shell prompt: OVN labs follow you from host to host. */
+  promptFor(lab) {
+    if (lab?.dynamicPrompt === 'ovn') return `root@${this.s.ovn.host}:~#`;
+    return lab?.prompt || 'voyager@ithaca:~$';
+  }
   /** Some labs start from a prepared state (for example a failed disk). Apply it once. */
   ensureSetup(lab) {
     if (!lab?.setup || this.s.labSetup[lab.id]) return false;
@@ -243,11 +252,16 @@ export class Simulator {
       }
       case 'env': return this.s.auth ? `OS_AUTH_URL=https://keystone.odyssey.example:5000/v3\nOS_USERNAME=${this.s.auth.user}\nOS_PROJECT_NAME=${this.s.auth.project}\nOS_REGION_NAME=RegionOne` : '';
       case 'whoami': return 'voyager';
-      case 'ping': return this.ping(parseArgs(rest));
-      case 'ssh': return this.ssh(parseArgs(rest));
+      case 'ping': return rest.some((x) => /^10\.0\./.test(x)) ? ovnExec(this, cmd, rest) : this.ping(parseArgs(rest));
+      case 'ssh': return isOvnHost(rest[0]) ? ovnExec(this, cmd, rest) : this.ssh(parseArgs(rest));
       case 'reset-lab': this.reset(); return { out: 'The seas are calm again: simulator state reset.', cls: 'ok' };
       case 'openstack': return this.openstack(rest);
       case 'ceph': case 'rbd': return cephExec(this, cmd, rest);
+      case 'ovn-nbctl': case 'ovn-sbctl': case 'ovn-trace': case 'ovn-appctl': case 'ovs-vsctl':
+      case 'ip': case 'hostname': case 'tcpdump': case 'exit':
+        return ovnExec(this, cmd, rest);
+      case 'promql': case 'amtool': case 'promtool': case 'curl':
+        return argusExec(this, cmd, rest);
       case 'cephadm': return 'You are already inside "cephadm shell" on ceph-01: type ceph or rbd commands directly.';
       case 'nova': case 'neutron': case 'cinder': case 'glance':
         return { out: `The legacy "${cmd}" client is deprecated for most tasks. Use the unified client: openstack …`, cls: 'err' };
@@ -642,6 +656,8 @@ export const LABS = [
     ],
   },
   ...CEPH_LABS,
+  ...OVN_LABS,
+  ...ARGUS_LABS,
 ];
 
 const OPENRC = `export OS_AUTH_URL=https://keystone.odyssey.example:5000/v3
@@ -671,6 +687,8 @@ openstack (output options: -f table|json|value|yaml|csv, -c <column>):
 
 Ceph (the Argonautica labs): ceph --help · rbd help
   ceph -s · ceph health detail · ceph osd tree · ceph df · ceph osd pool create · rbd create …
+${OVN_HELP}
+${ARGUS_HELP}
 Chain commands with &&, e.g.  ceph osd pool create images && rbd pool init images`;
 
-export const COMPLETIONS = [...Object.keys(P.cmds).map((k) => `openstack ${k}`), ...CEPH_COMPLETIONS];
+export const COMPLETIONS = [...Object.keys(P.cmds).map((k) => `openstack ${k}`), ...CEPH_COMPLETIONS, ...OVN_COMPLETIONS, ...ARGUS_COMPLETIONS];

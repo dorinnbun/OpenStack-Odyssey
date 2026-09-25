@@ -52,6 +52,7 @@ export const CEPH_EPIC = {
   title: 'The Argonautica',
   greekTitle: 'ΑΡΓΟΝΑΥΤΙΚΑ',
   project: 'Ceph',
+  honour: 'Argonaut',
   glyph: 'amphora',
   tagline: 'Ceph from scratch: the quest for the Golden Fleece of storage',
   myth: 'Before Odysseus, Jason sailed the Argo with fifty heroes to bring back the Golden Fleece. Your fleece is storage that never loses data, grows without limit and heals itself. You start knowing nothing about storage and end able to design and run Ceph under OpenStack.',

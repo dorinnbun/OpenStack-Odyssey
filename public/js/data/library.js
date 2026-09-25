@@ -92,7 +92,7 @@ export const LIBRARY = [
   {
     id: 'performance', glyph: 'lyre', title: 'Performance testing and benchmarking',
     why: 'Measure before you tune and before you promise numbers to a customer: API scale, VM boot times, network and disk throughput.',
-    roles: ['sys', 'net', 'sa', 'lead'], levels: ['sirens', 'return-ithaca'],
+    roles: ['sys', 'net', 'sa', 'lead'], levels: ['sirens', 'return-ithaca', 'argus-cloud'],
     links: [
       ['OpenStack performance docs: tools', 'https://docs.openstack.org/performance-docs/latest/methodologies/tools.html', 'Official'],
       ['Rally benchmarking framework', 'https://github.com/openstack/rally', 'Official'],
@@ -103,7 +103,7 @@ export const LIBRARY = [
   {
     id: 'multisite', glyph: 'owl', title: 'Multi-region, federation and edge',
     why: 'Designs that span sites: shared or federated Keystone, independent regions, and thousands of small edge locations.',
-    roles: ['pa', 'sa', 'net'], levels: ['scylla', 'phaeacian-court'],
+    roles: ['pa', 'sa', 'net'], levels: ['scylla', 'phaeacian-court', 'ovn-minotaur'],
     links: [
       ['Multiple regions with Kolla-Ansible', 'https://docs.openstack.org/kolla-ansible/latest/user/multi-regions.html', 'Official'],
       ['Multi-region deployments (Canonical OpenStack)', 'https://canonical-openstack.readthedocs-hosted.com/en/latest/how-to/misc/multiregion-deployments/', 'Vendor'],
@@ -117,7 +117,7 @@ export const LIBRARY = [
   {
     id: 'ipv6-dns', glyph: 'trident', title: 'IPv6 and DNS',
     why: 'IPv6 addressing modes and prefix delegation, and automatic DNS records for ports and floating IPs with Designate.',
-    roles: ['net', 'sys', 'sa'], levels: ['laestrygonians', 'scheria'],
+    roles: ['net', 'sys', 'sa'], levels: ['laestrygonians', 'scheria', 'ovn-minotaur'],
     links: [
       ['Neutron: IPv6', 'https://docs.openstack.org/neutron/latest/admin/config-ipv6.html', 'Official'],
       ['Neutron: DNS integration with an external service', 'https://docs.openstack.org/neutron/latest/admin/config-dns-int-ext-serv.html', 'Official'],

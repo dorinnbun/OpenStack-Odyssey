@@ -320,9 +320,11 @@ const RBD_HELP = `rbd commands in this lab:
 const auth = (s, name) => s.ceph?.auth[name]?.caps || {};
 const poolReady = (s, name) => s.ceph?.pools.some((p) => p.name === name && p.app === 'rbd');
 
+const CEPH_BANNER = ['Ceph Tentacle 20.2.3 · 3 hosts · 9 OSDs · you are inside "cephadm shell" on ceph-01', 'Type "ceph --help" or "rbd help". Start with:  ceph -s'];
+
 export const CEPH_LABS = [
   {
-    id: 'raise-argo', prompt: 'root@ceph-01:~#', title: 'Raise the Argo', level: 'Argonautica, islands Β–Δ',
+    id: 'raise-argo', prompt: 'root@ceph-01:~#', banner: CEPH_BANNER, title: 'Raise the Argo', level: 'Argonautica, islands Β–Δ',
     intro: 'Read a live Ceph cluster, create your first RBD pool and a virtual disk.',
     goals: [
       ['Read the cluster status', 'ceph -s', (d) => d.has('ceph-status')],
@@ -335,7 +337,7 @@ export const CEPH_LABS = [
     ],
   },
   {
-    id: 'golden-fleece', prompt: 'root@ceph-01:~#', title: 'Seize the Golden Fleece', level: 'Argonautica, island Ε',
+    id: 'golden-fleece', prompt: 'root@ceph-01:~#', banner: CEPH_BANNER, title: 'Seize the Golden Fleece', level: 'Argonautica, island Ε',
     intro: 'Prepare Ceph for OpenStack: pools for Glance, Cinder, Nova and backups, and least-privilege cephx users.',
     goals: [
       ['Create and initialise the images pool', 'ceph osd pool create images && rbd pool init images', (d, s) => poolReady(s, 'images')],
@@ -350,7 +352,7 @@ export const CEPH_LABS = [
     ],
   },
   {
-    id: 'talos', prompt: 'root@ceph-01:~#', title: 'Talos Is Wounded', level: 'Argonautica, island Ζ',
+    id: 'talos', prompt: 'root@ceph-01:~#', banner: CEPH_BANNER, alert: '⚠ Alert: a disk on ceph-02 has just failed. Investigate!', title: 'Talos Is Wounded', level: 'Argonautica, island Ζ',
     intro: 'A disk has just died on ceph-02. Find it, let Ceph heal, then replace the disk. (This lab injects the failure when you open it.)',
     setup(s) { const o = s.ceph.osds.find((x) => x.id === 4); o.up = false; o.in = true; o.destroyed = false; s.ceph.recoverUntil = 0; s.ceph.failureSeen = true; },
     goals: [
