@@ -1,0 +1,16 @@
+{
+  "name": "openstack-odyssey",
+  "version": "1.0.0",
+  "private": true,
+  "description": "An interactive, gamified OpenStack learning journey from beginner to expert.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "serve": "python3 -m http.server 8788 --directory public",
+    "check": "node --check public/js/app.js && node --check public/js/forge.js && node scripts/validate.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
