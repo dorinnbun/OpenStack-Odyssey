@@ -7,6 +7,7 @@ import { CHEAT, PORTS, STATES, CONFIG, SYMPTOMS } from './data/cheatsheet.js';
 import { esc, ROLES, doc } from './data/helpers.js';
 import { Simulator, LABS, COMPLETIONS } from './terminal.js';
 import { renderForge } from './forge.js';
+import { coin, glyph, greek, trireme } from './ornaments.js';
 
 const LEVELS = [...LEVELS_1, ...LEVELS_2, ...LEVELS_3];
 const $ = (sel, el = document) => el.querySelector(sel);
@@ -32,7 +33,7 @@ function award(amount, msg) {
   const before = rankOf(P.xp).name;
   P.xp += amount; persist();
   const after = rankOf(P.xp).name;
-  toast(after !== before ? `🏛️ Rank up! You are now a ${after}. (+${amount} XP)` : `${msg} +${amount} XP`);
+  toast(after !== before ? `The gods take notice: you are now a ${after}. (+${amount} XP)` : `${msg} +${amount} XP`);
 }
 function updateXpBox() {
   const r = rankOf(P.xp);
@@ -86,34 +87,63 @@ function notFound() {
 
 // ------------------------------------------------------------------ home
 const tierOf = (lv) => lv.tier;
+const rnd = (i, k) => { const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); };
+function blob(cx, cy, r, seed) {
+  // An irregular island outline, like those on an old chart.
+  const n = 9;
+  const p = Array.from({ length: n }, (_, k) => {
+    const a = (k / n) * Math.PI * 2; const rr = r * (0.72 + 0.42 * rnd(seed, k));
+    return [cx + Math.cos(a) * rr * 1.25, cy + Math.sin(a) * rr * 0.85];
+  });
+  const mid = (u, v) => [(u[0] + v[0]) / 2, (u[1] + v[1]) / 2];
+  let d = `M${mid(p[n - 1], p[0]).map((x) => x.toFixed(1)).join(',')}`;
+  for (let k = 0; k < n; k++) { const m = mid(p[k], p[(k + 1) % n]); d += ` Q${p[k][0].toFixed(1)},${p[k][1].toFixed(1)} ${m[0].toFixed(1)},${m[1].toFixed(1)}`; }
+  return `${d} Z`;
+}
 function mapSvg() {
-  const W = 1000; const H = 380;
+  const W = 1000; const H = 390;
   // Hand-placed route: west to east, winding like the voyage; labels above (-1) or below (1).
-  const PTS = [[70, 250, 1], [150, 320, 1], [245, 280, 1], [320, 190, 1], [390, 110, -1], [480, 80, -1], [560, 150, 1],
-    [540, 260, -1], [610, 330, 1], [700, 280, 1], [760, 190, 1], [720, 100, -1], [810, 60, -1], [880, 140, 1], [930, 260, 1]];
+  const PTS = [[80, 250, 1], [160, 322, 1], [255, 272, 1], [330, 185, 1], [395, 105, -1], [490, 88, -1], [575, 160, 1],
+    [540, 262, -1], [620, 330, 1], [710, 282, 1], [770, 192, 1], [720, 100, -1], [820, 64, -1], [890, 150, 1], [925, 272, 1]];
   const SHORT = ['Ithaca', 'Cicones', 'Lotus-Eaters', 'Cyclops', 'Aeolus', 'Laestrygonians', 'Aeaea', 'Underworld',
     'Sirens', 'Scylla & Charybdis', 'Thrinacia', 'Ogygia', 'Scheria', 'Court of Alcinous', 'Home to Ithaca'];
-  const pts = PTS.map(([x, y]) => [x, y]);
-  const path = pts.map(([x, y], i) => (i ? `S${(pts[i - 1][0] + x) / 2},${y} ${x},${y}` : `M${x},${y}`)).join(' ');
+  const path = PTS.map(([x, y], i) => (i ? `S${(PTS[i - 1][0] + x) / 2},${y} ${x},${y}` : `M${x},${y}`)).join(' ');
   const step = nextStep();
   const islands = LEVELS.map((lv, i) => {
-    const [x, y] = pts[i];
+    const [x, y, side] = PTS[i];
     const done = trialPassed(lv); const open = unlocked(lv); const current = step && step.lv === lv;
-    const fill = done ? 'var(--gold)' : current ? 'var(--terracotta)' : open ? 'var(--aegean)' : '#8a8f98';
-    const labelY = y + (PTS[i][2] > 0 ? 44 : -32);
-    return `<a href="#/level/${lv.id}" class="map-island${open ? '' : ' locked'}" aria-label="Level ${lv.n}: ${esc(lv.place)}${open ? '' : ' (locked)'}">
-      <ellipse cx="${x}" cy="${y + 8}" rx="30" ry="10" fill="var(--olive)" opacity=".35"/>
-      <circle class="isle" cx="${x}" cy="${y}" r="21" fill="${fill}" stroke="var(--surface)" stroke-width="3"/>
-      <text x="${x}" y="${y + 5}" text-anchor="middle" class="map-num">${done ? '✓' : lv.n}</text>
+    const fill = done ? 'var(--ochre)' : current ? 'var(--terracotta)' : open ? 'var(--surface)' : 'url(#hatch)';
+    const labelY = y + (side > 0 ? 42 : -30);
+    return `<a href="#/level/${lv.id}" class="map-island${open ? '' : ' locked'}" aria-label="Book ${greek(lv.n)}: ${esc(lv.place)}${open ? '' : ' (sealed)'}">
+      <path d="${blob(x, y + 3, 22, i + 1)}" fill="var(--line)" opacity=".45" transform="translate(3 4)"/>
+      <path class="isle" d="${blob(x, y, 22, i + 1)}" fill="${fill}" stroke="var(--line-strong)" stroke-width="2"/>
+      <text x="${x}" y="${y + 6}" text-anchor="middle" class="map-num"${open ? '' : ' opacity=".55"'}>${greek(lv.n)}</text>
       <text x="${x}" y="${labelY}" text-anchor="middle" class="map-label">${esc(SHORT[i])}</text>
-      ${current ? `<text x="${x + 30}" y="${y - 14}" text-anchor="middle" font-size="22">⛵</text>` : ''}
+      ${current ? trireme(58, `x="${x + 14}" y="${y - 58}" style="color:var(--figure)"`) : ''}
     </a>`;
   }).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Voyage map of 15 islands">
-    <defs><pattern id="waves" width="40" height="16" patternUnits="userSpaceOnUse"><path d="M0 8 Q10 0 20 8 T40 8" fill="none" stroke="var(--foam)" stroke-width="1" opacity=".35"/></pattern></defs>
-    <rect width="${W}" height="${H}" fill="var(--surface-2)"/><rect width="${W}" height="${H}" fill="url(#waves)"/>
-    <text x="24" y="34" font-family="Cinzel,serif" font-size="16" fill="var(--terracotta)" letter-spacing="3">THE WINE-DARK SEA</text>
-    <path d="${path}" fill="none" stroke="var(--terracotta)" stroke-width="2.5" stroke-dasharray="7 7" opacity=".7"/>
+  const rose = Array.from({ length: 8 }, (_, k) => {
+    const a = (k / 8) * Math.PI * 2 - Math.PI / 2; const L = k % 2 ? 14 : 26;
+    const x1 = Math.cos(a) * L; const y1 = Math.sin(a) * L; const a2 = a + Math.PI / 2;
+    return `<path d="M0,0 L${(Math.cos(a2) * 4).toFixed(1)},${(Math.sin(a2) * 4).toFixed(1)} L${x1.toFixed(1)},${y1.toFixed(1)} Z" fill="${k % 2 ? 'var(--line-strong)' : 'var(--terracotta)'}"/>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart of the voyage: fifteen islands">
+    <defs>
+      <pattern id="sea" width="64" height="30" patternUnits="userSpaceOnUse"><path d="M2 20 q6 -8 12 0 t12 0 M34 6 q6 -8 12 0 t12 0" fill="none" stroke="var(--line)" stroke-width="1.2" opacity=".75"/></pattern>
+      <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--bg-2)"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--line)" stroke-width="2"/></pattern>
+    </defs>
+    <rect width="${W}" height="${H}" fill="var(--bg-2)"/><rect width="${W}" height="${H}" fill="url(#sea)"/>
+    <rect x="5" y="5" width="${W - 10}" height="${H - 10}" fill="none" stroke="var(--line-strong)" stroke-width="2"/>
+    <rect x="11" y="11" width="${W - 22}" height="${H - 22}" fill="none" stroke="var(--line-strong)" stroke-width=".8"/>
+    <g transform="translate(26 24)">
+      <rect width="232" height="54" fill="var(--surface)" stroke="var(--line-strong)" stroke-width="1.5"/>
+      <rect x="4" y="4" width="224" height="46" fill="none" stroke="var(--line)"/>
+      <text x="116" y="27" text-anchor="middle" font-family="Cinzel,serif" font-weight="700" font-size="17" letter-spacing="6" fill="var(--ink)">ΟΔΥΣΣΕΙΑ</text>
+      <text x="116" y="43" text-anchor="middle" font-family="'EB Garamond',serif" font-style="italic" font-size="13" fill="var(--muted)">the wine-dark sea</text>
+    </g>
+    <g transform="translate(420 322)">${rose}<circle r="4" fill="var(--surface)" stroke="var(--line-strong)"/>
+      <text y="-31" text-anchor="middle" font-family="Cinzel,serif" font-size="11" font-weight="700" fill="var(--ink-2)">Β</text></g>
+    <path d="${path}" fill="none" stroke="var(--figure)" stroke-width="2.4" stroke-dasharray="1 7" stroke-linecap="round" opacity=".8"/>
     ${islands}
   </svg>`;
 }
@@ -124,60 +154,63 @@ function home() {
   const lessonsDone = Object.keys(P.lessons).length;
   const tiers = [...new Set(LEVELS.map(tierOf))];
   app.innerHTML = `
-  <section class="hero">
-    <p class="eyebrow">Sing to me of the cloud, O Muse</p>
-    <h1>${P.name ? `Welcome back, ${esc(P.name)}` : 'The OpenStack Odyssey'}</h1>
-    <p class="lede">A fifteen-island voyage from your first token to troubleshooting the hardest production incidents and proposing cloud architectures. Built for system and network engineers, presales, solution and principal architects, and engineering leads.</p>
-    <div class="row">
-      ${step ? `<a class="btn gold" href="${step.href}">${lessonsDone ? 'Continue' : 'Begin'} the voyage → ${esc(step.ls ? step.ls.title : step.trial ? `Trial of ${step.lv.place}` : step.lv.place)}</a>` : '<a class="btn gold" href="#/oracle">You are home. Seek the Oracle\'s hardest trials →</a>'}
-      <a class="btn ghost" href="#/paths">Choose a path for your role</a>
-      <a class="btn ghost" href="#/cheatsheet">Cheat sheet</a>
-    </div>
-    <div class="stats">
-      <div class="stat"><b>${passed}/${LEVELS.length}</b><span>islands conquered</span></div>
-      <div class="stat"><b>${lessonsDone}/${totalLessons}</b><span>lessons learnt</span></div>
-      <div class="stat"><b>${Object.keys(P.oracle).length}/${SCENARIOS.length}</b><span>Oracle trials</span></div>
-      <div class="stat"><b>${Object.keys(P.labs).length}/${LABS.length}</b><span>terminal labs</span></div>
-    </div>
+  <section class="temple">
+    <div class="pediment"><div class="medal">${trireme(120)}</div><div class="inscr">ΟΔΥΣΣΕΙΑ</div></div>
+    <div class="cornice"></div><div class="triglyphs"></div><div class="architrave"></div>
+    <div class="cella"><div class="column"></div>
+      <div class="naos">
+        <p class="eyebrow">Sing to me of the cloud, O Muse</p>
+        <h1>${P.name ? `Welcome back, ${esc(P.name)}` : 'The OpenStack Odyssey'}</h1>
+        <p class="lede">A voyage of fifteen islands from your first token to troubleshooting the hardest production incidents and proposing cloud architectures. For system and network engineers, presales, solution and principal architects, and engineering leads.</p>
+        <div class="row">
+          ${step ? `<a class="btn" href="${step.href}">${lessonsDone ? 'Continue' : 'Begin'} the voyage: ${esc(step.ls ? step.ls.title : step.trial ? `Trial of ${step.lv.place}` : step.lv.place)}</a>` : '<a class="btn" href="#/oracle">You are home. Seek the Oracle\'s hardest trials</a>'}
+          <a class="btn ghost" href="#/paths">Choose a path for your role</a>
+          <a class="btn ghost" href="#/cheatsheet">Cheat sheet</a>
+        </div>
+        <div class="stats">
+          <div class="stat"><b>${passed}/${LEVELS.length}</b><span>islands conquered</span></div>
+          <div class="stat"><b>${lessonsDone}/${totalLessons}</b><span>lessons learnt</span></div>
+          <div class="stat"><b>${Object.keys(P.oracle).length}/${SCENARIOS.length}</b><span>Oracle trials</span></div>
+          <div class="stat"><b>${Object.keys(P.labs).length}/${LABS.length}</b><span>terminal labs</span></div>
+        </div>
+      </div>
+    <div class="column"></div></div>
+    <div class="steps"><i></i><i></i><i></i></div>
   </section>
   <div class="mapwrap">${mapSvg()}</div>
-  ${tiers.map((t) => `<h2>${t} <span class="muted small" style="font-family:var(--font-body)">${tierBlurb[t]}</span></h2>
+  ${tiers.map((t) => `<h2 class="orn"><span>${t}<small>${tierBlurb[t]}</small></span></h2>
   <div class="levels">${LEVELS.filter((l) => l.tier === t).map(levelCard).join('')}</div>`).join('')}
-  <hr>
+  <h2 class="orn"><span>The sanctuaries<small>tools for practice and for work</small></span></h2>
   <div class="grid cols-3">
-    ${featureCard('🔮', 'The Oracle', 'Branching troubleshooting trials based on real production incidents.', '#/oracle')}
-    ${featureCard('💻', 'Terminal labs', 'A simulated openstack CLI: build networks, boot servers, break and fix them.', '#/terminal')}
-    ${featureCard('🔨', 'Architecture Forge', 'Size a cloud and generate a proposal and diagram for customers.', '#/forge')}
-    ${featureCard('📜', 'Cheat sheet', 'Hundreds of commands, ports, states and config options — printable.', '#/cheatsheet')}
-    ${featureCard('📚', 'Codex', 'Every service, the log map, a glossary and trusted sources.', '#/codex')}
-    ${featureCard('🏅', 'Your hero', 'Relics, rank, progress export and free-roam mode for pros.', '#/profile')}
+    ${featureCard('lamp', 'The Oracle', 'Branching troubleshooting trials based on real production incidents.', '#/oracle')}
+    ${featureCard('trident', 'Terminal labs', 'A simulated openstack CLI: build networks, boot servers, break and fix them.', '#/terminal')}
+    ${featureCard('helmet', 'Architecture Forge', 'Size a cloud and generate a proposal and diagram for customers.', '#/forge')}
+    ${featureCard('scroll', 'Cheat sheet', 'Hundreds of commands, ports, states and config options, ready to print.', '#/cheatsheet')}
+    ${featureCard('column', 'Codex', 'Every service, the log map, a glossary and trusted sources.', '#/codex')}
+    ${featureCard('laurel', 'Your hero', 'Relics, rank, progress export and free-roam mode for pros.', '#/profile')}
   </div>`;
 }
 const tierBlurb = {
-  Mortal: '— foundations, identity and tools',
-  Sailor: '— compute, images, networking and storage',
-  Hero: '— troubleshooting, observability and high availability',
-  Demigod: '— security, day-2 operations and advanced networking',
-  Olympian: '— architecture, presales and expert incidents',
+  Mortal: 'foundations, identity and tools',
+  Sailor: 'compute, images, networking and storage',
+  Hero: 'troubleshooting, observability and high availability',
+  Demigod: 'security, day-2 operations and advanced networking',
+  Olympian: 'architecture, presales and expert incidents',
 };
-const featureCard = (icon, title, text, href) => `<a class="card level-card" href="${href}"><span style="font-size:1.8rem">${icon}</span><h3>${title}</h3><p class="muted small" style="margin:0">${text}</p></a>`;
+const featureCard = (icon, title, text, href) => `<a class="level-card" href="${href}">${glyph(icon, 46)}<h3>${title}</h3><p class="muted small" style="margin:0">${text}</p></a>`;
 function levelCard(lv) {
   const open = unlocked(lv); const done = levelDone(lv); const pct = (done / lv.lessons.length) * 100;
   return `<a class="level-card${open ? '' : ' locked'}" href="#/level/${lv.id}">
-    <span class="seal" title="${esc(lv.relic.name)}">${trialPassed(lv) ? lv.relic.icon : open ? '' : '🔒'}</span>
-    <span class="num">BOOK ${toRoman(lv.n)} · ${esc(lv.tier.toUpperCase())}</span>
+    ${coin(greek(lv.n), trialPassed(lv), 54, `Book ${greek(lv.n)}${trialPassed(lv) ? `: ${esc(lv.relic.name)} earned` : ''}`)}
+    <span class="num">BOOK ${greek(lv.n)} · ${esc(lv.tier.toUpperCase())}</span>
     <h3>${esc(lv.title)}</h3>
     <span class="place">${esc(lv.place)}</span>
     <span class="small muted">${esc(lv.subtitle)}</span>
     <div class="progress" style="margin-top:6px"><div style="width:${pct}%"></div></div>
-    <span class="small muted">${done}/${lv.lessons.length} lessons${P.trials[lv.id] != null ? ` · trial ${P.trials[lv.id]}%` : ''}</span>
+    <span class="small muted">${done}/${lv.lessons.length} lessons${P.trials[lv.id] != null ? ` · trial ${P.trials[lv.id]}%` : ''}${open ? '' : ' · sealed'}</span>
   </a>`;
 }
-function toRoman(n) {
-  const m = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]; let s = '';
-  for (const [v, r] of m) while (n >= v) { s += r; n -= v; }
-  return s;
-}
+const bookNo = (n) => greek(n);
 
 // ------------------------------------------------------------------ paths
 const PATHS = {
@@ -220,8 +253,8 @@ function level(id) {
   const labs = LABS.filter((l) => l.id === lv.lab);
   const oracles = (lv.oracle || []).map((o) => SCENARIOS.find((s) => s.id === o)).filter(Boolean);
   app.innerHTML = `
-  <p class="breadcrumb"><a href="#/">Voyage</a> › Book ${toRoman(lv.n)}</p>
-  <p class="eyebrow">Book ${toRoman(lv.n)} · ${esc(lv.place)} · ${esc(lv.tier)}</p>
+  <p class="breadcrumb"><a href="#/">Voyage</a> › Book ${bookNo(lv.n)}</p>
+  <p class="eyebrow">Book ${bookNo(lv.n)} · ${esc(lv.place)} · ${esc(lv.tier)}</p>
   <h1>${esc(lv.title)}</h1>
   <p class="lede">${esc(lv.subtitle)}</p>
   <div class="prose"><div class="callout myth"><b>From the epic</b>${esc(lv.myth)}</div></div>
@@ -231,16 +264,16 @@ function level(id) {
       <h3 style="margin-top:0">Lessons</h3>
       <ol class="objectives">${lv.lessons.map((ls) => `<li class="${P.lessons[lessonKey(lv, ls)] ? 'done' : ''}"><span>${P.lessons[lessonKey(lv, ls)] ? '✓' : '○'}</span>
         <span>${open ? `<a href="#/lesson/${lv.id}/${ls.id}">${esc(ls.title)}</a>` : esc(ls.title)} <span class="muted small">· ${ls.minutes} min</span></span></li>`).join('')}
-        <li class="${trialPassed(lv) ? 'done' : ''}"><span>${trialPassed(lv) ? '✓' : '⚔'}</span><span>${open ? `<a href="#/trial/${lv.id}">The Trial of ${esc(lv.place)}</a>` : `The Trial of ${esc(lv.place)}`} <span class="muted small">· ${lv.quiz.length} questions${P.trials[lv.id] != null ? ` · best ${P.trials[lv.id]}%` : ''}</span></span></li>
+        <li class="${trialPassed(lv) ? 'done' : ''}"><span>${trialPassed(lv) ? '✓' : 'Ω'}</span><span>${open ? `<a href="#/trial/${lv.id}">The Trial of ${esc(lv.place)}</a>` : `The Trial of ${esc(lv.place)}`} <span class="muted small">· ${lv.quiz.length} questions${P.trials[lv.id] != null ? ` · best ${P.trials[lv.id]}%` : ''}</span></span></li>
       </ol>
       ${open ? `<div class="row" style="margin-top:14px"><a class="btn" href="#/lesson/${lv.id}/${(lv.lessons.find((x) => !P.lessons[lessonKey(lv, x)]) || lv.lessons[0]).id}">Set sail</a></div>` : ''}
     </div>
     <div class="card">
       <h3 style="margin-top:0">Relic of this island</h3>
-      <div class="row"><span style="font-size:2.4rem;${trialPassed(lv) ? '' : 'filter:grayscale(1);opacity:.4'}">${lv.relic.icon}</span>
+      <div class="row">${coin(greek(lv.n), trialPassed(lv), 64, esc(lv.relic.name))}
       <div><b>${esc(lv.relic.name)}</b><br><span class="muted small">${esc(lv.relic.desc)}</span></div></div>
-      ${labs.length ? `<h3>Practice in the terminal</h3>${labs.map((l) => `<a class="pill gold" href="#/terminal/${l.id}">${P.labs[l.id] ? '✓ ' : '💻 '}${esc(l.title)}</a>`).join(' ')}` : ''}
-      ${oracles.length ? `<h3>Consult the Oracle</h3><div class="tags">${oracles.map((s) => `<a class="pill${P.oracle[s.id] ? ' ok' : ''}" href="#/oracle/${s.id}">${P.oracle[s.id] ? '✓ ' : '🔮 '}${esc(s.title)}</a>`).join('')}</div>` : ''}
+      ${labs.length ? `<h3>Practice in the terminal</h3>${labs.map((l) => `<a class="pill gold" href="#/terminal/${l.id}">${P.labs[l.id] ? '✓ ' : ''}${esc(l.title)}</a>`).join(' ')}` : ''}
+      ${oracles.length ? `<h3>Consult the Oracle</h3><div class="tags">${oracles.map((s) => `<a class="pill${P.oracle[s.id] ? ' ok' : ''}" href="#/oracle/${s.id}">${P.oracle[s.id] ? '✓ ' : ''}${esc(s.title)}</a>`).join('')}</div>` : ''}
     </div>
   </div>
   <div class="row" style="margin-top:22px">
@@ -251,9 +284,9 @@ function level(id) {
 
 // ------------------------------------------------------------------ lesson
 function sidebar(lv, currentId) {
-  return `<aside class="sidebar"><h4>Book ${toRoman(lv.n)} · ${esc(lv.place)}</h4><ol>
+  return `<aside class="sidebar"><h4>Book ${bookNo(lv.n)} · ${esc(lv.place)}</h4><ol>
     ${lv.lessons.map((ls) => `<li><a href="#/lesson/${lv.id}/${ls.id}" class="${ls.id === currentId ? 'current' : ''}"><span class="tick">${P.lessons[lessonKey(lv, ls)] ? '✓' : '○'}</span>${esc(ls.title)}</a></li>`).join('')}
-    <li><a href="#/trial/${lv.id}" class="${currentId === '__trial' ? 'current' : ''}"><span class="tick">${trialPassed(lv) ? '✓' : '⚔'}</span>Trial of ${esc(lv.place)}</a></li>
+    <li><a href="#/trial/${lv.id}" class="${currentId === '__trial' ? 'current' : ''}"><span class="tick">${trialPassed(lv) ? '✓' : 'Ω'}</span>Trial of ${esc(lv.place)}</a></li>
     </ol><hr style="margin:10px 0"><a class="small" href="#/level/${lv.id}">Island overview</a> · <a class="small" href="#/cheatsheet">Cheat sheet</a></aside>`;
 }
 function lesson(levelId, lessonId) {
@@ -262,7 +295,7 @@ function lesson(levelId, lessonId) {
   if (!unlocked(lv)) { location.hash = `#/level/${lv.id}`; return; }
   const idx = lv.lessons.indexOf(ls); const next = lv.lessons[idx + 1];
   const done = !!P.lessons[lessonKey(lv, ls)];
-  app.innerHTML = `<p class="breadcrumb"><a href="#/">Voyage</a> › <a href="#/level/${lv.id}">Book ${toRoman(lv.n)}</a> › Lesson ${idx + 1}</p>
+  app.innerHTML = `<p class="breadcrumb"><a href="#/">Voyage</a> › <a href="#/level/${lv.id}">Book ${bookNo(lv.n)}</a> › Lesson ${idx + 1}</p>
   <div class="lesson-layout">${sidebar(lv, ls.id)}
     <article class="prose">
       <p class="eyebrow">Lesson ${idx + 1} of ${lv.lessons.length} · ${ls.minutes} min · +${XP.lesson} XP</p>
@@ -300,14 +333,14 @@ function trial(levelId) {
   if (!unlocked(lv)) { location.hash = `#/level/${lv.id}`; return; }
   const qs = lv.quiz.map((q) => ({ ...q, order: shuffle(q.a.map((_, i) => i)) }));
   let answered = 0; let right = 0;
-  app.innerHTML = `<p class="breadcrumb"><a href="#/">Voyage</a> › <a href="#/level/${lv.id}">Book ${toRoman(lv.n)}</a> › Trial</p>
+  app.innerHTML = `<p class="breadcrumb"><a href="#/">Voyage</a> › <a href="#/level/${lv.id}">Book ${bookNo(lv.n)}</a> › Trial</p>
   <div class="lesson-layout">${sidebar(lv, '__trial')}
   <article class="prose">
     <p class="eyebrow">The Trial of ${esc(lv.place)}</p>
     <h1>Prove your worth</h1>
     <p class="lede">Answer ${qs.length} questions. Score 70% or more to claim the ${esc(lv.relic.name)} and open the way to the next island.</p>
     ${qs.map((q, qi) => `<div class="q card" data-q="${qi}"><h3>${qi + 1}. ${esc(q.q)}</h3><div class="opts">
-      ${q.order.map((ai, k) => `<button class="opt" type="button" data-a="${ai}"><span class="k">${'ABCD'[k]}</span><span>${esc(q.a[ai])}</span></button>`).join('')}
+      ${q.order.map((ai, k) => `<button class="opt" type="button" data-a="${ai}"><span class="k">${'ΑΒΓΔ'[k]}</span><span>${esc(q.a[ai])}</span></button>`).join('')}
     </div><div class="explain" hidden></div></div>`).join('')}
     <div class="card" data-result hidden></div>
   </article></div>`;
@@ -317,7 +350,7 @@ function trial(levelId) {
     el.dataset.done = '1'; answered++; if (ok) right++;
     el.querySelectorAll('.opt').forEach((b) => { b.disabled = true; if (Number(b.dataset.a) === q.c) b.classList.add('right'); });
     if (!ok) btn.classList.add('wrong');
-    const ex = el.querySelector('.explain'); ex.hidden = false; ex.innerHTML = `${ok ? '✅ Correct.' : '❌ Not quite.'} ${esc(q.e)}`;
+    const ex = el.querySelector('.explain'); ex.hidden = false; ex.innerHTML = `${ok ? '<span class="verdict good">Well struck.</span>' : '<span class="verdict bad">Not quite.</span>'} ${esc(q.e)}`;
     if (answered === qs.length) finish();
   }));
   function finish() {
@@ -325,12 +358,12 @@ function trial(levelId) {
     const best = P.trials[lv.id]; const firstPass = pct >= 70 && !(best >= 70);
     const firstPerfect = pct === 100 && best !== 100;
     P.trials[lv.id] = Math.max(best || 0, pct); persist();
-    if (firstPass) award(XP.trial, `Trial passed! ${lv.relic.icon} ${lv.relic.name} claimed.`);
+    if (firstPass) award(XP.trial, `Trial passed! The ${lv.relic.name} is yours.`);
     if (firstPerfect) setTimeout(() => award(XP.perfect, 'Flawless trial!'), 1200);
     const nxt = LEVELS[lv.n];
     const r = $('[data-result]'); r.hidden = false;
     r.innerHTML = pct >= 70
-      ? `<h2 style="margin-top:0">${lv.relic.icon} Victory — ${pct}%</h2><p>You claimed the <b>${esc(lv.relic.name)}</b>. ${esc(lv.relic.desc)}</p>
+      ? `<div class="row">${coin(greek(lv.n), true, 72, esc(lv.relic.name))}<h2 style="margin:0">Victory: ${pct}%</h2></div><p>You claimed the <b>${esc(lv.relic.name)}</b>. ${esc(lv.relic.desc)}</p>
          <div class="row">${nxt ? `<a class="btn gold" href="#/level/${nxt.id}">Sail on to ${esc(nxt.place)} →</a>` : '<a class="btn gold" href="#/profile">You are home. See your relics →</a>'}<button class="btn ghost" data-retry>Retry</button></div>`
       : `<h2 style="margin-top:0">The sea turns you back — ${pct}%</h2><p>You need 70%. Review the explanations above and the lessons, then try again.</p><div class="row"><button class="btn" data-retry>Try again</button><a class="btn ghost" href="#/level/${lv.id}">Review lessons</a></div>`;
     r.querySelector('[data-retry]').addEventListener('click', () => trial(lv.id));
@@ -345,7 +378,7 @@ function oracle(id) {
     <p class="lede">Each trial is a real-world incident. Read the evidence, choose your next move, and find the root cause. Wrong turns cost XP, but teach as much as right ones.</p>
     <div class="grid cols-3" style="margin-top:18px">${[...SCENARIOS].sort((a, b) => a.difficulty - b.difficulty).map((s) => `
       <a class="level-card" href="#/oracle/${s.id}">
-        <span class="seal">${P.oracle[s.id] ? '✓' : '🔮'}</span>
+        <span class="seal">${P.oracle[s.id] ? '✓ solved' : ''}</span>
         <span class="num">${'◆'.repeat(s.difficulty)}${'◇'.repeat(5 - s.difficulty)} · DIFFICULTY ${s.difficulty}</span>
         <h3>${esc(s.title)}</h3><span class="small muted">${esc(s.summary)}</span>
         <div class="tags">${s.tags.map((t) => `<span class="pill">${esc(t)}</span>`).join('')}</div>
@@ -377,7 +410,7 @@ function oracle(id) {
       const c = n.choices[Number(b.dataset.i)];
       if (c.wrong) {
         mistakes++; b.disabled = true; b.style.opacity = '.55';
-        const fb = $('[data-fb]'); fb.hidden = false; fb.innerHTML = `❌ ${esc(c.wrong)}`;
+        const fb = $('[data-fb]'); fb.hidden = false; fb.innerHTML = `<span class="verdict bad">A wrong turn.</span> ${esc(c.wrong)}`;
       } else { trail.push(c.t); render(c.go); }
     }));
   };
@@ -486,24 +519,24 @@ function cheatsheet() {
   <p class="lede">The commands, ports, states and settings you reach for most — from a first token to a 3 a.m. incident. Search it, copy from it, print it.</p>
   <div class="row no-print"><input class="codex-search" style="flex:1;margin:0" type="search" placeholder="Filter: e.g. migrate, mtu, ceph, quota, 5672…" data-search aria-label="Filter the cheat sheet">
     <button class="btn ghost" type="button" data-print>Print / PDF</button></div>
-  <nav class="tags no-print" style="margin:14px 0 6px">${CHEAT.map((s) => `<a class="pill" href="#/cheatsheet" data-jump="${s.id}">${s.icon} ${esc(s.title)}</a>`).join('')}
-    <a class="pill" href="#/cheatsheet" data-jump="symptoms">🩺 Symptoms</a><a class="pill" href="#/cheatsheet" data-jump="ports">🔌 Ports</a>
-    <a class="pill" href="#/cheatsheet" data-jump="states">🔁 States</a><a class="pill" href="#/cheatsheet" data-jump="config">⚙️ Config</a></nav>
+  <nav class="tags no-print" style="margin:14px 0 6px">${CHEAT.map((s) => `<a class="pill" href="#/cheatsheet" data-jump="${s.id}">${esc(s.title)}</a>`).join('')}
+    <a class="pill" href="#/cheatsheet" data-jump="symptoms">Symptoms</a><a class="pill" href="#/cheatsheet" data-jump="ports">Ports</a>
+    <a class="pill" href="#/cheatsheet" data-jump="states">States</a><a class="pill" href="#/cheatsheet" data-jump="config">Config</a></nav>
   <div class="cheat">
-  ${CHEAT.map((s) => `<section class="cheat-sec" id="cs-${s.id}" data-section><h2>${s.icon} ${esc(s.title)}</h2>
+  ${CHEAT.map((s) => `<section class="cheat-sec" id="cs-${s.id}" data-section><h2>${esc(s.title)}</h2>
     <dl>${s.items.map(([c, d]) => `<div class="cs-row" data-text="${esc(`${c} ${d} ${s.title}`.toLowerCase())}"><dt><code>${esc(c)}</code>${copyBtn(c)}</dt><dd>${esc(d)}</dd></div>`).join('')}</dl></section>`).join('')}
-  <section class="cheat-sec wide" id="cs-symptoms" data-section><h2>🩺 Symptom → cause → first check</h2>
+  <section class="cheat-sec wide" id="cs-symptoms" data-section><h2>Symptom → cause → first check</h2>
     <div class="prose" style="max-width:none"><table><tr><th>Symptom</th><th>Usual causes</th><th>First check</th></tr>
     ${SYMPTOMS.map((r) => `<tr data-text="${esc(r.join(' ').toLowerCase())}"><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td><td><code>${esc(r[2])}</code></td></tr>`).join('')}</table></div></section>
-  <section class="cheat-sec" id="cs-ports" data-section><h2>🔌 Default ports</h2>
+  <section class="cheat-sec" id="cs-ports" data-section><h2>Default ports</h2>
     <div class="prose" style="max-width:none"><table><tr><th>Service</th><th>Port</th><th>Purpose</th></tr>
     ${PORTS.map((r) => `<tr data-text="${esc(r.join(' ').toLowerCase())}">${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table></div></section>
-  <section class="cheat-sec" id="cs-states" data-section><h2>🔁 Resource states</h2>
+  <section class="cheat-sec" id="cs-states" data-section><h2>Resource states</h2>
     <dl>${STATES.map(([t, d]) => `<div class="cs-row" data-text="${esc(`${t} ${d}`.toLowerCase())}"><dt><b>${esc(t)}</b></dt><dd>${esc(d)}</dd></div>`).join('')}</dl></section>
-  <section class="cheat-sec wide" id="cs-config" data-section><h2>⚙️ Config options that matter</h2>
+  <section class="cheat-sec wide" id="cs-config" data-section><h2>Config options that matter</h2>
     <div class="prose" style="max-width:none"><table><tr><th>File</th><th>Option</th><th>Why</th></tr>
     ${CONFIG.map((r) => `<tr data-text="${esc(r.join(' ').toLowerCase())}"><td><code>${esc(r[0])}</code></td><td><code>${esc(r[1])}</code></td><td>${esc(r[2])}</td></tr>`).join('')}</table></div></section>
-  <section class="cheat-sec wide" data-section><h2>🧮 Formulas</h2><dl>
+  <section class="cheat-sec wide" data-section><h2>Formulas</h2><dl>
     <div class="cs-row" data-text="placement capacity allocation ratio"><dt><code>capacity = (total − reserved) × allocation_ratio − used</code></dt><dd>Placement free capacity per resource class, per host</dd></div>
     <div class="cs-row" data-text="compute hosts sizing"><dt><code>hosts = max(ΣvCPU ÷ (threads×cpu_ratio), ΣRAM ÷ ((RAM−reserved)×ram_ratio)) + HA</code></dt><dd>Compute sizing</dd></div>
     <div class="cs-row" data-text="ceph usable capacity raw replication"><dt><code>usable ≈ raw ÷ replicas × fill_target</code></dt><dd>Ceph: 1 PB raw, 3×, 75% ≈ 250 TB</dd></div>
@@ -521,10 +554,10 @@ function cheatsheet() {
 function profile() {
   const r = rankOf(P.xp);
   const special = [
-    ['🔮', 'Favourite of Delphi', 'Solve every Oracle trial', Object.keys(P.oracle).length === SCENARIOS.length],
-    ['⚓', 'Master Mariner', 'Complete every terminal lab', Object.keys(P.labs).length === LABS.length],
-    ['📖', 'Scholar of Alexandria', 'Learn every lesson', Object.keys(P.lessons).length >= totalLessons],
-    ['🏆', 'Flawless Voyager', 'Score 100% on five trials', Object.values(P.trials).filter((x) => x === 100).length >= 5],
+    ['lamp', 'Favourite of Delphi', 'Solve every Oracle trial', Object.keys(P.oracle).length === SCENARIOS.length],
+    ['trident', 'Master Mariner', 'Complete every terminal lab', Object.keys(P.labs).length === LABS.length],
+    ['scroll', 'Scholar of Alexandria', 'Learn every lesson', Object.keys(P.lessons).length >= totalLessons],
+    ['laurel', 'Flawless Voyager', 'Score 100% on five trials', Object.values(P.trials).filter((x) => x === 100).length >= 5],
   ];
   app.innerHTML = `<p class="eyebrow">The Hero</p><h1>${esc(P.name || 'Nameless voyager')}</h1>
   <p class="lede">${r.name} · ${P.xp} XP${r.next ? ` · ${r.next - P.xp} XP to ${r.nextName}` : ''}</p>
@@ -543,9 +576,9 @@ function profile() {
     </div>
   </div>
   <h2>Relics of the islands</h2>
-  <div class="badges">${LEVELS.map((lv) => `<div class="badge${trialPassed(lv) ? ' earned' : ''}"><div class="icon">${lv.relic.icon}</div><b>${esc(lv.relic.name)}</b><span>${esc(lv.place)}</span></div>`).join('')}</div>
+  <div class="badges">${LEVELS.map((lv) => `<div class="badge${trialPassed(lv) ? ' earned' : ''}">${coin(greek(lv.n), trialPassed(lv), 60, esc(lv.relic.name))}<b>${esc(lv.relic.name)}</b><span>${esc(lv.place)}</span></div>`).join('')}</div>
   <h2>Honours</h2>
-  <div class="badges">${special.map(([i, n, d, ok]) => `<div class="badge${ok ? ' earned' : ''}"><div class="icon">${i}</div><b>${n}</b><span>${d}</span></div>`).join('')}</div>`;
+  <div class="badges">${special.map(([i, n, d, ok]) => `<div class="badge${ok ? ' earned' : ''}">${glyph(i, 54)}<b>${n}</b><span>${d}</span></div>`).join('')}</div>`;
   $('#p-name').addEventListener('change', (e) => { P.name = e.target.value.trim(); persist(); toast('Name inscribed.'); });
   $('#p-role').addEventListener('change', (e) => { P.role = e.target.value; persist(); toast(P.role ? `Role set: ${ROLES[P.role]}` : 'Role cleared'); });
   $('#p-free').addEventListener('change', (e) => { P.freeRoam = e.target.checked; persist(); toast(P.freeRoam ? 'All islands revealed.' : 'The mists return.'); });
@@ -578,8 +611,15 @@ $('[data-menu]').addEventListener('click', (e) => {
   e.currentTarget.setAttribute('aria-expanded', String(nav.classList.contains('open')));
 });
 const THEME_KEY = 'odyssey.theme';
-function applyTheme(t) { if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
-try { applyTheme(localStorage.getItem(THEME_KEY)); } catch { /* ignore */ }
+function applyTheme(t) {
+  if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  const dark = t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches);
+  const btn = $('[data-theme-toggle]'); btn.textContent = dark ? 'ΗΜΕΡΑ' : 'ΝΥΞ';
+  btn.title = dark ? 'Day: papyrus and black-figure' : 'Night: red-figure on black glaze';
+}
+let savedTheme = null;
+try { savedTheme = localStorage.getItem(THEME_KEY); } catch { /* ignore */ }
+applyTheme(savedTheme);
 $('[data-theme-toggle]').addEventListener('click', () => {
   const dark = document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
   const t = dark ? 'light' : 'dark'; applyTheme(t);

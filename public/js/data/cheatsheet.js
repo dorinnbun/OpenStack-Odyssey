@@ -3,7 +3,7 @@
 
 export const CHEAT = [
   {
-    id: 'auth', title: 'Authentication & CLI setup', icon: '🗝️',
+    id: 'auth', title: 'Authentication & CLI setup',
     items: [
       ['source ~/project-openrc.sh', 'Load credentials from an openrc file'],
       ['export OS_CLOUD=mycloud', 'Use a named cloud from ~/.config/openstack/clouds.yaml'],
@@ -20,7 +20,7 @@ export const CHEAT = [
     ],
   },
   {
-    id: 'keystone', title: 'Identity (Keystone)', icon: '🏛️',
+    id: 'keystone', title: 'Identity (Keystone)',
     items: [
       ['openstack domain create acme', 'Create a domain'],
       ['openstack project create --domain Default --parent <p> team-a', 'Create (nested) project'],
@@ -40,7 +40,7 @@ export const CHEAT = [
     ],
   },
   {
-    id: 'compute', title: 'Compute (Nova)', icon: '⚔️',
+    id: 'compute', title: 'Compute (Nova)',
     items: [
       ['openstack server create --flavor F --image I --network N --key-name K --security-group SG vm1', 'Boot a server'],
       ['openstack server create ... --boot-from-volume 40 vm1', 'Root disk as a Cinder volume'],
@@ -78,7 +78,7 @@ export const CHEAT = [
     ],
   },
   {
-    id: 'placement', title: 'Placement & scheduling', icon: '👁️',
+    id: 'placement', title: 'Placement & scheduling',
     items: [
       ['openstack resource provider list', 'Resource providers (hosts, nested GPU/NIC)'],
       ['openstack resource provider inventory list <rp>', 'Total, reserved, allocation_ratio per class'],
@@ -92,7 +92,7 @@ export const CHEAT = [
     ],
   },
   {
-    id: 'image', title: 'Images (Glance)', icon: '🌬️',
+    id: 'image', title: 'Images (Glance)',
     items: [
       ['qemu-img info disk.img', 'Real format and virtual size'],
       ['qemu-img convert -p -f qcow2 -O raw in.qcow2 out.raw', 'Convert to raw (Ceph COW)'],
@@ -108,7 +108,7 @@ export const CHEAT = [
     ],
   },
   {
-    id: 'network', title: 'Networking (Neutron)', icon: '⚓',
+    id: 'network', title: 'Networking (Neutron)',
     items: [
       ['openstack network create net1', 'Self-service network'],
       ['openstack subnet create sub1 --network net1 --subnet-range 10.0.0.0/24 --dns-nameserver 9.9.9.9', 'Subnet'],
@@ -133,7 +133,7 @@ export const CHEAT = [
     ],
   },
   {
-    id: 'sg', title: 'Security groups', icon: '🛡️',
+    id: 'sg', title: 'Security groups',
     items: [
       ['openstack security group create web-sg', 'Create group'],
       ['openstack security group rule create web-sg --protocol tcp --dst-port 443 --remote-ip 0.0.0.0/0', 'Allow HTTPS in'],
@@ -146,7 +146,7 @@ export const CHEAT = [
     ],
   },
   {
-    id: 'storage', title: 'Block storage (Cinder)', icon: '🏺',
+    id: 'storage', title: 'Block storage (Cinder)',
     items: [
       ['openstack volume create --size 100 --type ssd data1', 'Create volume'],
       ['openstack volume create --image ubuntu-24.04 --size 40 --bootable boot1', 'Bootable volume'],
@@ -167,7 +167,7 @@ export const CHEAT = [
     ],
   },
   {
-    id: 'lbaas', title: 'Load balancers, DNS, orchestration, secrets', icon: '⛵',
+    id: 'lbaas', title: 'Load balancers, DNS, orchestration, secrets',
     items: [
       ['openstack loadbalancer create --name lb1 --vip-subnet-id sub1 --wait', 'Create LB (Octavia)'],
       ['openstack loadbalancer listener create --protocol HTTP --protocol-port 80 --name l1 lb1', 'Listener'],
@@ -187,7 +187,7 @@ export const CHEAT = [
     ],
   },
   {
-    id: 'ops', title: 'Operator host commands (Kolla-Ansible layout)', icon: '🔧',
+    id: 'ops', title: 'Operator host commands (Kolla-Ansible layout)',
     items: [
       ['kolla-ansible prechecks|deploy|reconfigure|upgrade -i multinode', 'Lifecycle actions'],
       ['kolla-ansible reconfigure -i multinode --tags nova,neutron', 'Apply config for selected services'],
@@ -211,7 +211,7 @@ export const CHEAT = [
     ],
   },
   {
-    id: 'ovn', title: 'OVN / OVS troubleshooting', icon: '🧭',
+    id: 'ovn', title: 'OVN / OVS troubleshooting',
     items: [
       ['ovn-nbctl show', 'Logical switches/routers (NB DB)'],
       ['ovn-sbctl show', 'Chassis and port bindings (SB DB)'],
@@ -230,7 +230,7 @@ export const CHEAT = [
     ],
   },
   {
-    id: 'ceph', title: 'Ceph', icon: '🪨',
+    id: 'ceph', title: 'Ceph',
     items: [
       ['ceph -s', 'Cluster status'],
       ['ceph health detail', 'Why HEALTH_WARN/ERR'],

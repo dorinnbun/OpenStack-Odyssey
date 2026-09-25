@@ -1,31 +1,31 @@
 import { term, note, lens, fig, doc, guide } from './helpers.js';
 
 const netSvg = `<svg viewBox="0 0 760 320" role="img" aria-label="Neutron self-service topology">
-  <style>.b{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}.t{font:600 12.5px Inter,sans-serif;fill:var(--ink)}.s{font:11px Inter,sans-serif;fill:var(--muted)}.l{stroke:var(--aegean);stroke-width:2.5}.x{stroke:var(--terracotta);stroke-width:2.5}</style>
-  <rect x="20" y="20" width="720" height="44" rx="10" fill="var(--terracotta)" opacity=".15" stroke="var(--terracotta)"/>
+  <style>.b{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}.t{font:600 14px 'EB Garamond',Georgia,serif;fill:var(--ink)}.s{font:italic 12.5px 'EB Garamond',Georgia,serif;fill:var(--muted)}.l{stroke:var(--aegean);stroke-width:2.5}.x{stroke:var(--terracotta);stroke-width:2.5}</style>
+  <rect x="20" y="20" width="720" height="44" rx="1" fill="var(--terracotta)" opacity=".15" stroke="var(--terracotta)"/>
   <text x="36" y="47" class="t">External / provider network "public"  203.0.113.0/24  (physnet1, flat or VLAN)</text>
   <line x1="380" y1="64" x2="380" y2="110" class="x"/>
-  <rect x="300" y="110" width="160" height="56" rx="28" fill="var(--gold)" opacity=".3" stroke="var(--gold-2)"/>
+  <rect x="300" y="110" width="160" height="56" rx="1" fill="var(--gold)" opacity=".3" stroke="var(--gold-2)"/>
   <text x="330" y="134" class="t">router argo-rtr</text><text x="322" y="152" class="s">SNAT + floating IP DNAT</text>
   <line x1="330" y1="166" x2="190" y2="214" class="l"/><line x1="430" y1="166" x2="570" y2="214" class="l"/>
-  <rect x="40" y="214" width="300" height="40" rx="10" class="b"/><text x="56" y="239" class="t">argo-net  10.10.0.0/24  (Geneve)</text>
-  <rect x="420" y="214" width="300" height="40" rx="10" class="b"/><text x="436" y="239" class="t">db-net  10.20.0.0/24  (Geneve)</text>
+  <rect x="40" y="214" width="300" height="40" rx="1" class="b"/><text x="56" y="239" class="t">argo-net  10.10.0.0/24  (Geneve)</text>
+  <rect x="420" y="214" width="300" height="40" rx="1" class="b"/><text x="436" y="239" class="t">db-net  10.20.0.0/24  (Geneve)</text>
   <line x1="120" y1="254" x2="120" y2="276" class="l"/><line x1="240" y1="254" x2="240" y2="276" class="l"/><line x1="570" y1="254" x2="570" y2="276" class="l"/>
-  <rect x="70" y="276" width="100" height="32" rx="8" class="b"/><text x="86" y="297" class="t">web-01</text>
-  <rect x="190" y="276" width="100" height="32" rx="8" class="b"/><text x="206" y="297" class="t">web-02</text>
-  <rect x="520" y="276" width="100" height="32" rx="8" class="b"/><text x="540" y="297" class="t">db-01</text>
+  <rect x="70" y="276" width="100" height="32" rx="1" class="b"/><text x="86" y="297" class="t">web-01</text>
+  <rect x="190" y="276" width="100" height="32" rx="1" class="b"/><text x="206" y="297" class="t">web-02</text>
+  <rect x="520" y="276" width="100" height="32" rx="1" class="b"/><text x="540" y="297" class="t">db-01</text>
   <text x="60" y="196" class="s">floating IP 203.0.113.50 → 10.10.0.11</text>
 </svg>`;
 
 const haSvg = `<svg viewBox="0 0 760 300" role="img" aria-label="Highly available control plane">
-  <style>.b{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}.t{font:600 12.5px Inter,sans-serif;fill:var(--ink)}.s{font:11px Inter,sans-serif;fill:var(--muted)}.a{stroke:var(--aegean);stroke-width:2}</style>
-  <rect x="250" y="16" width="260" height="46" rx="23" fill="var(--gold)" opacity=".3" stroke="var(--gold-2)"/>
+  <style>.b{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}.t{font:600 14px 'EB Garamond',Georgia,serif;fill:var(--ink)}.s{font:italic 12.5px 'EB Garamond',Georgia,serif;fill:var(--muted)}.a{stroke:var(--aegean);stroke-width:2}</style>
+  <rect x="250" y="16" width="260" height="46" rx="1" fill="var(--gold)" opacity=".3" stroke="var(--gold-2)"/>
   <text x="274" y="37" class="t">VIP (keepalived/VRRP)</text><text x="274" y="53" class="s">api.example.com :443 → HAProxy</text>
   <line x1="380" y1="62" x2="130" y2="100" class="a"/><line x1="380" y1="62" x2="380" y2="100" class="a"/><line x1="380" y1="62" x2="630" y2="100" class="a"/>
   <g>
-  <rect x="30" y="100" width="200" height="180" rx="12" class="b"/><text x="46" y="124" class="t">controller-1</text>
-  <rect x="280" y="100" width="200" height="180" rx="12" class="b"/><text x="296" y="124" class="t">controller-2</text>
-  <rect x="530" y="100" width="200" height="180" rx="12" class="b"/><text x="546" y="124" class="t">controller-3</text>
+  <rect x="30" y="100" width="200" height="180" rx="1" class="b"/><text x="46" y="124" class="t">controller-1</text>
+  <rect x="280" y="100" width="200" height="180" rx="1" class="b"/><text x="296" y="124" class="t">controller-2</text>
+  <rect x="530" y="100" width="200" height="180" rx="1" class="b"/><text x="546" y="124" class="t">controller-3</text>
   </g>
   <g class="s">
   <text x="46" y="148">HAProxy · API services</text><text x="46" y="170">MariaDB Galera node</text><text x="46" y="192">RabbitMQ (quorum queues)</text><text x="46" y="214">Memcached · OVN NB/SB RAFT</text><text x="46" y="236">Schedulers · conductors</text>

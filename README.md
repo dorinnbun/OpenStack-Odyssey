@@ -20,6 +20,17 @@ The content targets **OpenStack 2026.1 "Gazpacho"** (a SLURP release). Sources: 
 
 Progress is saved in the browser (`localStorage`). No account or backend is needed.
 
+## Design language
+
+The site is styled after ancient Greece, not a modern web app:
+
+- **Day theme:** papyrus and limestone with black-figure pottery (black on terracotta). **Night theme** (ΝΥΞ): red-figure pottery (terracotta and cream on black glaze).
+- **Home:** a temple front with a pediment carved with a trireme, a Doric triglyph frieze, fluted columns and a stepped base.
+- **Voyage map:** drawn like an ancient chart, with hand-drawn islands, a wind rose, a dotted route and a trireme marking where you are.
+- **Books** are numbered with Greek letters (Α, Β, Γ…), as Homer's books are. Trial answers use Α Β Γ Δ.
+- **Relics** are bronze coins (drachmae) stamped with the book's letter. Icons are black-figure glyphs: owl, amphora, column, helmet, lyre, scroll, lamp, laurel and trident. There are no emoji.
+- **Type:** Cinzel inscription capitals, EB Garamond text, and meander (Greek key) friezes. All shapes are square-cut stone tablets.
+
 ## Hosting on Cloudflare (free plan): which option?
 
 **Recommended: Cloudflare Workers with Static Assets** (already configured in `wrangler.jsonc`).
@@ -63,10 +74,11 @@ There is no build step and no framework: plain HTML, CSS and ES modules.
 ```
 public/
   index.html            app shell
-  css/odyssey.css       Greek design language (Aegean, marble, terracotta, gold, meander), light/dark
+  css/odyssey.css       ancient Greek design: papyrus, black-/red-figure pottery, temple, meander
   js/app.js             router, progress/XP, pages
   js/terminal.js        openstack CLI simulator + lab definitions
   js/forge.js           sizing calculator, diagram, proposal generator
+  js/ornaments.js       coins, trireme and black-figure glyphs (inline SVG)
   js/data/levels-*.js   curriculum (lessons, role lenses, quizzes)
   js/data/scenarios.js  Oracle troubleshooting trees
   js/data/cheatsheet.js cheat sheet data

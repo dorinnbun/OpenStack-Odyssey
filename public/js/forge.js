@@ -100,7 +100,7 @@ function diagram(v, r) {
   const W = 760; const rowH = 58; const top = 70;
   const H = top + rows.length * rowH + 20;
   let out = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Physical architecture diagram">
-  <style>.t{font:600 12px Inter,sans-serif;fill:var(--ink)}.s{font:11px Inter,sans-serif;fill:var(--muted)}</style>
+  <style>.t{font:600 13.5px 'EB Garamond',Georgia,serif;fill:var(--ink)}.s{font:italic 12.5px 'EB Garamond',Georgia,serif;fill:var(--muted)}</style>
   <rect x="200" y="8" width="360" height="26" rx="8" fill="var(--surface-2)" stroke="var(--line)"/>
   <text x="380" y="26" text-anchor="middle" class="t">Spine switches (L3, ECMP / EVPN)</text>
   <rect x="120" y="42" width="520" height="20" rx="6" fill="var(--surface-2)" stroke="var(--line)"/>

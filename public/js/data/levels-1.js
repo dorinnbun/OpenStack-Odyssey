@@ -1,39 +1,39 @@
 import { term, note, lens, fig, doc, guide } from './helpers.js';
 
 const archSvg = `<svg viewBox="0 0 760 360" role="img" aria-label="OpenStack high level architecture">
-  <style>.b{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}.t{font:600 13px Inter,sans-serif;fill:var(--ink)}.s{font:11px Inter,sans-serif;fill:var(--muted)}.h{font:700 12px Cinzel,serif;fill:var(--terracotta);letter-spacing:.08em}</style>
+  <style>.b{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}.t{font:600 14.5px 'EB Garamond',Georgia,serif;fill:var(--ink)}.s{font:italic 12.5px 'EB Garamond',Georgia,serif;fill:var(--muted)}.h{font:700 12px Cinzel,serif;fill:var(--terracotta);letter-spacing:.08em}</style>
   <text x="20" y="26" class="h">USERS / AUTOMATION</text>
-  <rect x="20" y="36" width="720" height="44" rx="10" class="b"/>
+  <rect x="20" y="36" width="720" height="44" rx="1" class="b"/>
   <text x="40" y="63" class="t">Horizon dashboard · openstack CLI · SDKs · Terraform/OpenTofu · Ansible</text>
   <text x="20" y="108" class="h">CONTROL PLANE (REST APIs)</text>
   <g>
-    <rect x="20" y="118" width="130" height="62" rx="10" class="b"/><text x="34" y="144" class="t">Keystone</text><text x="34" y="164" class="s">identity + catalog</text>
-    <rect x="165" y="118" width="130" height="62" rx="10" class="b"/><text x="179" y="144" class="t">Nova + Placement</text><text x="179" y="164" class="s">compute scheduling</text>
-    <rect x="310" y="118" width="130" height="62" rx="10" class="b"/><text x="324" y="144" class="t">Neutron</text><text x="324" y="164" class="s">networking</text>
-    <rect x="455" y="118" width="130" height="62" rx="10" class="b"/><text x="469" y="144" class="t">Cinder / Glance</text><text x="469" y="164" class="s">volumes · images</text>
-    <rect x="600" y="118" width="140" height="62" rx="10" class="b"/><text x="614" y="144" class="t">Octavia, Heat…</text><text x="614" y="164" class="s">higher-level services</text>
+    <rect x="20" y="118" width="130" height="62" rx="1" class="b"/><text x="34" y="144" class="t">Keystone</text><text x="34" y="164" class="s">identity + catalog</text>
+    <rect x="165" y="118" width="130" height="62" rx="1" class="b"/><text x="179" y="144" class="t">Nova + Placement</text><text x="179" y="164" class="s">compute scheduling</text>
+    <rect x="310" y="118" width="130" height="62" rx="1" class="b"/><text x="324" y="144" class="t">Neutron</text><text x="324" y="164" class="s">networking</text>
+    <rect x="455" y="118" width="130" height="62" rx="1" class="b"/><text x="469" y="144" class="t">Cinder / Glance</text><text x="469" y="164" class="s">volumes · images</text>
+    <rect x="600" y="118" width="140" height="62" rx="1" class="b"/><text x="614" y="144" class="t">Octavia, Heat…</text><text x="614" y="164" class="s">higher-level services</text>
   </g>
-  <rect x="20" y="194" width="350" height="40" rx="10" fill="var(--gold)" opacity=".25" stroke="var(--gold)"/>
+  <rect x="20" y="194" width="350" height="40" rx="1" fill="var(--gold)" opacity=".25" stroke="var(--gold)"/>
   <text x="36" y="219" class="t">MariaDB / Galera  (state of every service)</text>
-  <rect x="390" y="194" width="350" height="40" rx="10" fill="var(--terracotta)" opacity=".18" stroke="var(--terracotta)"/>
+  <rect x="390" y="194" width="350" height="40" rx="1" fill="var(--terracotta)" opacity=".18" stroke="var(--terracotta)"/>
   <text x="406" y="219" class="t">RabbitMQ  (RPC between service workers)</text>
   <text x="20" y="266" class="h">DATA PLANE</text>
-  <rect x="20" y="276" width="230" height="64" rx="10" class="b"/><text x="36" y="302" class="t">Compute nodes</text><text x="36" y="322" class="s">nova-compute · libvirt/KVM · OVN/OVS</text>
-  <rect x="265" y="276" width="230" height="64" rx="10" class="b"/><text x="281" y="302" class="t">Network nodes / gateways</text><text x="281" y="322" class="s">routers · NAT · external traffic</text>
-  <rect x="510" y="276" width="230" height="64" rx="10" class="b"/><text x="526" y="302" class="t">Storage</text><text x="526" y="322" class="s">Ceph · SAN/NAS · Swift</text>
+  <rect x="20" y="276" width="230" height="64" rx="1" class="b"/><text x="36" y="302" class="t">Compute nodes</text><text x="36" y="322" class="s">nova-compute · libvirt/KVM · OVN/OVS</text>
+  <rect x="265" y="276" width="230" height="64" rx="1" class="b"/><text x="281" y="302" class="t">Network nodes / gateways</text><text x="281" y="322" class="s">routers · NAT · external traffic</text>
+  <rect x="510" y="276" width="230" height="64" rx="1" class="b"/><text x="526" y="302" class="t">Storage</text><text x="526" y="322" class="s">Ceph · SAN/NAS · Swift</text>
 </svg>`;
 
 const bootSvg = `<svg viewBox="0 0 760 300" role="img" aria-label="Nova server boot flow">
-  <style>.b{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}.t{font:600 12.5px Inter,sans-serif;fill:var(--ink)}.n{font:700 12px Cinzel,serif;fill:#fff}.a{stroke:var(--aegean);stroke-width:2;fill:none;marker-end:url(#ar)}</style>
+  <style>.b{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}.t{font:600 14px 'EB Garamond',Georgia,serif;fill:var(--ink)}.n{font:700 12px Cinzel,serif;fill:#fff}.a{stroke:var(--aegean);stroke-width:2;fill:none;marker-end:url(#ar)}</style>
   <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--aegean)"/></marker></defs>
-  <rect x="10" y="30" width="120" height="50" rx="10" class="b"/><text x="24" y="60" class="t">openstack CLI</text>
-  <rect x="170" y="30" width="120" height="50" rx="10" class="b"/><text x="186" y="60" class="t">nova-api</text>
-  <rect x="330" y="30" width="130" height="50" rx="10" class="b"/><text x="342" y="60" class="t">nova-conductor</text>
-  <rect x="500" y="30" width="120" height="50" rx="10" class="b"/><text x="510" y="60" class="t">nova-scheduler</text>
-  <rect x="640" y="30" width="110" height="50" rx="10" class="b"/><text x="656" y="60" class="t">Placement</text>
-  <rect x="330" y="190" width="130" height="50" rx="10" class="b"/><text x="345" y="220" class="t">nova-compute</text>
-  <rect x="120" y="190" width="150" height="50" rx="10" class="b"/><text x="132" y="220" class="t">Glance / Neutron</text>
-  <rect x="520" y="190" width="150" height="50" rx="10" class="b"/><text x="540" y="220" class="t">libvirt / KVM</text>
+  <rect x="10" y="30" width="120" height="50" rx="1" class="b"/><text x="24" y="60" class="t">openstack CLI</text>
+  <rect x="170" y="30" width="120" height="50" rx="1" class="b"/><text x="186" y="60" class="t">nova-api</text>
+  <rect x="330" y="30" width="130" height="50" rx="1" class="b"/><text x="342" y="60" class="t">nova-conductor</text>
+  <rect x="500" y="30" width="120" height="50" rx="1" class="b"/><text x="510" y="60" class="t">nova-scheduler</text>
+  <rect x="640" y="30" width="110" height="50" rx="1" class="b"/><text x="656" y="60" class="t">Placement</text>
+  <rect x="330" y="190" width="130" height="50" rx="1" class="b"/><text x="345" y="220" class="t">nova-compute</text>
+  <rect x="120" y="190" width="150" height="50" rx="1" class="b"/><text x="132" y="220" class="t">Glance / Neutron</text>
+  <rect x="520" y="190" width="150" height="50" rx="1" class="b"/><text x="540" y="220" class="t">libvirt / KVM</text>
   <path d="M130 55H168" class="a"/><path d="M290 55H328" class="a"/><path d="M460 55H498" class="a"/><path d="M620 55H638" class="a"/>
   <path d="M395 80V188" class="a"/><path d="M330 215H272" class="a"/><path d="M460 215H518" class="a"/>
   <g><circle cx="150" cy="40" r="11" fill="var(--terracotta)"/><text x="146" y="45" class="n">1</text>
@@ -43,7 +43,7 @@ const bootSvg = `<svg viewBox="0 0 760 300" role="img" aria-label="Nova server b
   <circle cx="410" cy="140" r="11" fill="var(--terracotta)"/><text x="406" y="145" class="n">5</text>
   <circle cx="300" cy="200" r="11" fill="var(--terracotta)"/><text x="296" y="205" class="n">6</text>
   <circle cx="490" cy="200" r="11" fill="var(--terracotta)"/><text x="486" y="205" class="n">7</text></g>
-  <text x="10" y="280" style="font:12px Inter,sans-serif;fill:var(--muted)">1 auth + REST · 2 build request via RPC · 3 select_destinations · 4 allocation candidates + claim · 5 build_and_run_instance · 6 image + port binding · 7 define &amp; start domain</text>
+  <text x="10" y="280" style="font:italic 13.5px 'EB Garamond',Georgia,serif;fill:var(--muted)">1 auth + REST · 2 build request via RPC · 3 select_destinations · 4 allocation candidates + claim · 5 build_and_run_instance · 6 image + port binding · 7 define &amp; start domain</text>
 </svg>`;
 
 export const LEVELS_1 = [

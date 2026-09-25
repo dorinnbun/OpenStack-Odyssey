@@ -261,7 +261,7 @@ export class Simulator {
     if (!sv.key) return { out: `${user}@${host}: Permission denied (publickey).\n(hint: the server was booted without --key-name)`, cls: 'err' };
     if (img && user !== img.user) return { out: `${user}@${host}: Permission denied (publickey).\n(hint: the default user for ${img.name} is "${img.user}")`, cls: 'err' };
     this.mark('ssh-ok');
-    return { out: `Welcome to ${img?.name || 'Linux'} on ${sv.name}!\n\n${user}@${sv.name}:~$ hostname && ip -br addr | grep -v lo\n${sv.name}\neth0  UP  ${sv.ip}/24\n${user}@${sv.name}:~$ exit\nConnection to ${host} closed.\n\n⚓ You reached your server across the wine-dark sea.`, cls: 'ok' };
+    return { out: `Welcome to ${img?.name || 'Linux'} on ${sv.name}!\n\n${user}@${sv.name}:~$ hostname && ip -br addr | grep -v lo\n${sv.name}\neth0  UP  ${sv.ip}/24\n${user}@${sv.name}:~$ exit\nConnection to ${host} closed.\n\nYou reached your server across the wine-dark sea.`, cls: 'ok' };
   }
 }
 

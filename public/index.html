@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>OpenStack Odyssey</title>
   <meta name="description" content="An interactive journey from OpenStack novice to expert: quests, a simulated CLI, troubleshooting trials and an architecture forge for engineers, presales and architects.">
-  <meta name="theme-color" content="#0b2545">
+  <meta name="theme-color" content="#b0502a">
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/odyssey.css">
 </head>
 <body>
@@ -17,11 +17,14 @@
   <header class="topbar">
     <a class="brand" href="#/" aria-label="OpenStack Odyssey home">
       <svg viewBox="0 0 64 64" aria-hidden="true" class="brand-mark">
-        <circle cx="32" cy="32" r="30" fill="var(--sea)" stroke="var(--gold)" stroke-width="3"/>
-        <path d="M14 40 Q32 48 50 40 L46 46 Q32 52 18 46 Z" fill="var(--terracotta)"/>
-        <path d="M32 12 L32 40" stroke="var(--gold)" stroke-width="2.5"/>
-        <path d="M32 14 Q44 22 32 36 Z" fill="var(--marble)"/>
-        <path d="M31 16 Q22 24 31 34 Z" fill="var(--marble)" opacity=".75"/>
+        <circle cx="32" cy="32" r="30" fill="#1d140d" stroke="#c1892e" stroke-width="2.5"/>
+        <g fill="#d9824c">
+          <ellipse cx="32" cy="37" rx="12" ry="14"/><path d="M20 27 L22 17 L28 23 Z M44 27 L42 17 L36 23 Z"/>
+        </g>
+        <circle cx="27" cy="30" r="4.6" fill="#f4ead3"/><circle cx="37" cy="30" r="4.6" fill="#f4ead3"/>
+        <circle cx="27" cy="30" r="2" fill="#1d140d"/><circle cx="37" cy="30" r="2" fill="#1d140d"/>
+        <path d="M32 33 L30.5 36.5 H33.5 Z" fill="#1d140d"/>
+        <text x="32" y="60" text-anchor="middle" font-family="Cinzel,serif" font-size="7" font-weight="700" fill="#c1892e">ΟΔΥ</text>
       </svg>
       <span><b>OpenStack</b> Odyssey</span>
     </a>
@@ -41,7 +44,7 @@
       <div class="xpbar"><div class="xpfill" data-xpfill></div></div>
       <span class="xpnum" data-xpnum>0 XP</span>
     </div>
-    <button class="theme-btn" data-theme-toggle aria-label="Toggle light/dark theme">◐</button>
+    <button class="theme-btn" data-theme-toggle aria-label="Toggle day/night theme">ΝΥΞ</button>
   </header>
 
   <main id="app" tabindex="-1"></main>
